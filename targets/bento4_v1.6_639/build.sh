@@ -7,6 +7,9 @@ if [ ! -d "$TARGET/repo" ]; then
 fi
 
 cd "$TARGET/repo"
+mkdir cmakebuild
+cd cmakebuild
+cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j $(nproc)
 
-cp gif2rgb "$OUT"
+cp mp42hls "$OUT"

@@ -13,3 +13,4 @@ export ASAN_OPTIONS=detect_leaks=0 # Centos7 needs
 make -j $(nproc)
 
 cp src/gifsicle "$OUT"
+cp ../test.gif "$OUT"

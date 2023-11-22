@@ -10,4 +10,5 @@ if [ -d "$TARGET/repo" ]; then
 fi
 
 git clone https://git.code.sf.net/p/giflib/code "$TARGET/repo"
+# git -C "$TARGET/repo" checkout 72e31ff # 2014/12/22 uafuzz version. no proper corpus
 git -C "$TARGET/repo" checkout 5.2.1

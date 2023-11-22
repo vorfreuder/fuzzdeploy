@@ -7,6 +7,8 @@ if [ ! -d "$TARGET/repo" ]; then
 fi
 
 cd "$TARGET/repo"
+export ASAN_OPTIONS=detect_leaks=0 # Centos7 needs
+./configure --disable-shared
 make -j $(nproc)
 
-cp gif2rgb "$OUT"
+cp binutils/cxxfilt "$OUT"

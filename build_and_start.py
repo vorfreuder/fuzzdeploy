@@ -20,7 +20,6 @@ TARGETS = {
     "cxxfilt": "cxxfilt -t",
     "exiv2": "exiv2 -pX @@",
     "flex": "flex @@",
-    "giflib": "gifsponge < @@       ",
     "gifsicle": "gifsicle @@ test.gif -o /dev/null",
     "gpac": "MP4Box -diso @@ -out /dev/null",
     "gpac_latest": "MP4Box -hint @@",

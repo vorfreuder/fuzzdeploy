@@ -7,9 +7,8 @@ if [ ! -d "$TARGET/repo" ]; then
 fi
 
 cd "$TARGET/repo"
-export ASAN_OPTIONS=detect_leaks=0 # Centos7 needs
-./autogen.sh
+export ASAN_OPTIONS=detect_leaks=0
 ./configure --disable-shared
 make -j $(nproc)
 
-cp util/gifsponge "$OUT"
+cp binutils/readelf "$OUT"
