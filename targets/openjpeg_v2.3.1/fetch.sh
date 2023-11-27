@@ -1,6 +1,6 @@
 #!/bin/bash
 # Date: 2019/04/02
-# Version: 6af3931 latest commit
+# Version: v2.3.1
 
 set -e
 

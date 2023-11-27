@@ -19,6 +19,6 @@ res.sort(key=lambda x: x[0])
 prettytable = PrettyTable()
 prettytable.align = "l"
 prettytable.field_names = ["target", "date", "version"]
-prettytable.sortby = "date"
+prettytable.sortby = "target"
 prettytable.add_rows(res)
 print(prettytable)
