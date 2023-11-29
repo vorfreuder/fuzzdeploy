@@ -7,6 +7,8 @@ if [ ! -d "$TARGET/repo" ]; then
 fi
 
 cd "$TARGET/repo"
-$CC $CFLAGS -DMJS_MAIN mjs.c -o mjs
+./configure
+make -j $(nproc)
+sudo make install
 
-cp mjs "$OUT"
+cp bin/gcc/MP4Box "$OUT"

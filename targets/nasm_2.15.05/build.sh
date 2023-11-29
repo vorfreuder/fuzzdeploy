@@ -7,6 +7,9 @@ if [ ! -d "$TARGET/repo" ]; then
 fi
 
 cd "$TARGET/repo"
-$CC $CFLAGS -DMJS_MAIN mjs.c -o mjs
+./autogen.sh
+export ASAN_OPTIONS=detect_leaks=0 # Centos7 needs
+./configure
+make -j $(nproc)
 
-cp mjs "$OUT"
+cp nasm "$OUT"

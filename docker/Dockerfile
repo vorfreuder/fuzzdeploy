@@ -23,6 +23,8 @@ ENV TRIAGE_BY_CASR /triage_by_casr
 
 ENV CC  /usr/bin/gcc
 ENV CXX /usr/bin/g++
+ENV CFLAGS "-O0"
+ENV CXXFLAGS "-O0"
 ENV LD /usr/bin/ld
 ENV AR /usr/bin/ar
 ENV AS /usr/bin/as

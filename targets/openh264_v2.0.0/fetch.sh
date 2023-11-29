@@ -1,6 +1,6 @@
 #!/bin/bash
-# Date: 2023/10/27
-# Version: 34e14ea latest commit
+# Date: 2019/05/08
+# Version: v2.0.0
 
 set -e
 
@@ -9,4 +9,4 @@ if [ -d "$TARGET/repo" ]; then
 fi
 
 git clone https://github.com/cisco/openh264 "$TARGET/repo"
-git -C "$TARGET/repo" checkout 34e14ea # 2023/10/27
+git -C "$TARGET/repo" checkout v2.0.0

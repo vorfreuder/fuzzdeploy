@@ -7,6 +7,8 @@ if [ ! -d "$TARGET/repo" ]; then
 fi
 
 cd "$TARGET/repo"
-$CC $CFLAGS -DMJS_MAIN mjs.c -o mjs
+export ASAN_OPTIONS=detect_leaks=0
+./configure --disable-shared
+make -j $(nproc)
 
-cp mjs "$OUT"
+cp testmxml "$OUT"

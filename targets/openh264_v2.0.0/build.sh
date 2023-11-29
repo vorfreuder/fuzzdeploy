@@ -7,6 +7,6 @@ if [ ! -d "$TARGET/repo" ]; then
 fi
 
 cd "$TARGET/repo"
-$CC $CFLAGS -DMJS_MAIN mjs.c -o mjs
+make -j $(nproc)
 
-cp mjs "$OUT"
+cp h264dec "$OUT"
