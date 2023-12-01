@@ -28,7 +28,7 @@ for file in "$crashes_dir"/*; do
             if [[ $target_args == *"@@"* ]]; then
                 casr-san -o "$reports_dir/$filename".casrep -- ${target_args//@@/$file} 2>$failed_dir/$filename || true
             else
-                casr-san -o "$reports_dir/$filename".casrep -- $target_args <$file 2>$failed_dir/$filename || true
+                casr-san -o "$reports_dir/$filename".casrep --stdin $file -- $target_args 2>$failed_dir/$filename || true
             fi
         fi
     fi
