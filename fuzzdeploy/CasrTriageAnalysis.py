@@ -105,13 +105,11 @@ class CasrTriageAnalysis:
         assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
         WORK_DIR_TRIAGE_BY_CASR = os.path.join(WORK_DIR, "triage_by_casr")
         # check if images exist
-        FUZZERS = set()
         TARGETS = set()
         for test_path in utility.test_paths(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(test_path)
-            FUZZERS.add(fuzzer)
             TARGETS.add(target)
-        Builder.build_imgs(FUZZERS=list(FUZZERS), TARGETS=list(TARGETS))
+        Builder.build_imgs(FUZZERS=["clang"], TARGETS=list(TARGETS))
         container_id_ls = []
         cpu_id_range = []
         triage_by_casr_ls = []
@@ -160,7 +158,7 @@ class CasrTriageAnalysis:
             --security-opt seccomp=unconfined \
             --cpuset-cpus="{cpu_id_range.pop(0)}" \
             --network=none \
-            "{fuzzer}/{target}" \
+            "clang/{target}" \
             -c '${{SRC}}/triage_by_casr.sh'
                     """
                 ).strip()
