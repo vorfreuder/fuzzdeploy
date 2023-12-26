@@ -26,13 +26,14 @@ for file in "$crashes_dir"/*; do
         filename=$(basename "$file") # get the filename
         if [ "$filename" != "README.txt" ] && [ ! -e "$reports_dir/$filename".casrep ] && [ ! -e "$failed_dir/$filename" ]; then
             if [[ $target_args == *"@@"* ]]; then
-                casr-san -o "$reports_dir/$filename".casrep -- ${target_args//@@/$file} 2>$failed_dir/$filename || true
+                casr-san -t 10 -o "$reports_dir/$filename".casrep -- ${target_args//@@/$file} 2>$failed_dir/$filename || true
             else
-                casr-san -o "$reports_dir/$filename".casrep --stdin $file -- $target_args 2>$failed_dir/$filename || true
+                casr-san -t 10 -o "$reports_dir/$filename".casrep --stdin $file -- $target_args 2>$failed_dir/$filename || true
             fi
         fi
     fi
 done
+find "$failed_dir" -type f -empty -delete
 if [ -d "$failed_dir" ] && [ -z "$(ls -A $failed_dir)" ]; then
     rmdir "$failed_dir"
 fi
