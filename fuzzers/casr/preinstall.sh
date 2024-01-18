@@ -46,3 +46,14 @@ update-alternatives \
     --install /usr/bin/clang clang /usr/bin/clang-12 20 \
     --slave /usr/bin/clang++ clang++ /usr/bin/clang++-12 \
     --slave /usr/bin/clang-cpp clang-cpp /usr/bin/clang-cpp-12
+
+export PATH=$PATH:${SRC}/cargo/bin
+export CARGO_HOME=${SRC}/cargo
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+    RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup \
+        sh -s -- -y
+mkdir -vp ${CARGO_HOME:-$HOME/.cargo}
+echo -e \
+    "[source.crates-io]\nreplace-with = 'ustc'\n\n[source.ustc]\nregistry = 'git://mirrors.ustc.edu.cn/crates.io-index'" \
+    >>${CARGO_HOME:-$HOME/.cargo}/config
+cargo install casr

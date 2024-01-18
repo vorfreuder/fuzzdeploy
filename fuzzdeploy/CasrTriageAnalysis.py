@@ -126,7 +126,7 @@ class CasrTriageAnalysis:
         for test_path in utility.test_paths(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(test_path)
             TARGETS.add(target)
-        Builder.build_imgs(FUZZERS=["clang"], TARGETS=list(TARGETS))
+        Builder.build_imgs(FUZZERS=["casr"], TARGETS=list(TARGETS))
         container_id_dict = {}
         cpu_count = psutil.cpu_count()
         if cpu_count > 1:
@@ -216,7 +216,7 @@ class CasrTriageAnalysis:
             --security-opt seccomp=unconfined \
             --cpuset-cpus="{cpu_id}" \
             --network=none \
-            "clang/{target}" \
+            "casr/{target}" \
             -c '${{SRC}}/triage_by_casr.sh'
                     """
                 ).strip()

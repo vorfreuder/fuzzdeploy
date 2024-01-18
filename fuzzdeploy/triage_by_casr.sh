@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH=$PATH:${SRC}/cargo/bin
 
 target_dir=$TRIAGE_BY_CASR
 reports_dir=$target_dir/reports

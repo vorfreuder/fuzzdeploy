@@ -47,16 +47,16 @@ RUN git clone --depth=1 https://github.com/vanhauser-thc/afl-cov && \
 	(cd afl-cov && make install) && \
 	rm -rf afl-cov
 
-ENV PATH=$PATH:${SRC}/cargo/bin
-ENV CARGO_HOME=${SRC}/cargo
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-	RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup \
-	sh -s -- -y && \
-	mkdir -vp ${CARGO_HOME:-$HOME/.cargo} && \
-	echo \
-	"[source.crates-io]\nreplace-with = 'ustc'\n\n[source.ustc]\nregistry = 'git://mirrors.ustc.edu.cn/crates.io-index'" \
-	>> ${CARGO_HOME:-$HOME/.cargo}/config && \
-	cargo install casr
+# ENV PATH=$PATH:${SRC}/cargo/bin
+# ENV CARGO_HOME=${SRC}/cargo
+# RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+# 	RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup \
+# 	sh -s -- -y && \
+# 	mkdir -vp ${CARGO_HOME:-$HOME/.cargo} && \
+# 	echo \
+# 	"[source.crates-io]\nreplace-with = 'ustc'\n\n[source.ustc]\nregistry = 'git://mirrors.ustc.edu.cn/crates.io-index'" \
+# 	>> ${CARGO_HOME:-$HOME/.cargo}/config && \
+# 	cargo install casr
 
 ARG fuzzer_name
 ARG fuzzer_path=fuzzers/${fuzzer_name}
