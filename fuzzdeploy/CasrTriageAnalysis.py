@@ -131,10 +131,19 @@ class CasrTriageAnalysis:
         if cpu_count > 1:
             cpu_count -= 1
         free_cpu_ls = [i for i in range(cpu_count)]
-        triage_by_casr_ls = []
+
         # calculate crashes sum
+        def get_triaged_crashes_num(triaged_path):
+            triaged_num = 0
+            if os.path.exists(os.path.join(triaged_path, "failed")):
+                triaged_num += len(os.listdir(os.path.join(triaged_path, "failed")))
+            if os.path.exists(os.path.join(triaged_path, "reports")):
+                triaged_num += len(os.listdir(os.path.join(triaged_path, "reports")))
+            return triaged_num
+
         crashes_sum = {}
         current_crashes_num = {}
+        untriaged_paths = []
         for test_path in utility.test_paths(WORK_DIR):
             assert os.path.exists(
                 os.path.join(test_path, "target_args")
@@ -148,15 +157,7 @@ class CasrTriageAnalysis:
             triage_by_casr = os.path.join(
                 WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
             )
-            triaged_num=0
-            if os.path.exists(os.path.join(triage_by_casr, "failed")):
-                triaged_num += len(
-                    os.listdir(os.path.join(triage_by_casr, "failed"))
-                )
-            if os.path.exists(os.path.join(triage_by_casr, "reports")):
-                triaged_num += len(
-                    os.listdir(os.path.join(triage_by_casr, "reports"))
-                )
+            triaged_num = get_triaged_crashes_num(triage_by_casr)
             for foldername, subfolders, filenames in os.walk(test_path):
                 if "crashes" in subfolders:
                     files = os.listdir(os.path.join(foldername, "crashes"))
@@ -165,6 +166,15 @@ class CasrTriageAnalysis:
                     fuzzer, target, repeat = utility.parse_path_by(test_path)
                     crashes_sum[f"{fuzzer}/{target}/{repeat}"] = len(files)
                     break
+            if triaged_num != crashes_sum[f"{fuzzer}/{target}/{repeat}"]:
+                untriaged_paths.append(test_path)
+            elif triaged_num == 0 and (
+                not os.path.exists(
+                    os.path.join(triage_by_casr, "summary_by_unique_line")
+                )
+            ):
+                untriaged_paths.append(test_path)
+
         with utility.Progress(
             utility.SpinnerColumn(spinner_name="arrow3"),
             utility.TextColumn("[progress.description]{task.description}"),
@@ -176,21 +186,18 @@ class CasrTriageAnalysis:
             last_triaged_crashes_num = 0
 
             def update_progress(progress, last_triaged_crashes_num):
-                for triage_by_casr in triage_by_casr_ls:
-                    fuzzer, target, repeat = utility.parse_path_by(triage_by_casr)
+                for test_path in untriaged_paths:
+                    fuzzer, target, repeat = utility.parse_path_by(test_path)
+                    triage_by_casr = os.path.join(
+                        WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
+                    )
                     if crashes_sum[
                         f"{fuzzer}/{target}/{repeat}"
                     ] == current_crashes_num.get(f"{fuzzer}/{target}/{repeat}", 0):
                         continue
-                    current_crashes_num[f"{fuzzer}/{target}/{repeat}"] = 0
-                    if os.path.exists(os.path.join(triage_by_casr, "failed")):
-                        current_crashes_num[f"{fuzzer}/{target}/{repeat}"] += len(
-                            os.listdir(os.path.join(triage_by_casr, "failed"))
-                        )
-                    if os.path.exists(os.path.join(triage_by_casr, "reports")):
-                        current_crashes_num[f"{fuzzer}/{target}/{repeat}"] += len(
-                            os.listdir(os.path.join(triage_by_casr, "reports"))
-                        )
+                    current_crashes_num[
+                        f"{fuzzer}/{target}/{repeat}"
+                    ] = get_triaged_crashes_num(triage_by_casr)
                 triaged_crashes_num = sum(current_crashes_num.values())
                 progress.update(
                     triage_task,
@@ -201,7 +208,7 @@ class CasrTriageAnalysis:
             triage_task = progress.add_task(
                 "[bold green]Triaging", total=sum(crashes_sum.values())
             )
-            for test_path in utility.test_paths(WORK_DIR):
+            for test_path in untriaged_paths:
                 fuzzer, target, repeat = utility.parse_path_by(test_path)
                 while len(free_cpu_ls) == 0:
                     for container_id in list(container_id_dict.keys()):
@@ -215,7 +222,6 @@ class CasrTriageAnalysis:
                     WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
                 )
                 os.makedirs(triage_by_casr, exist_ok=True)
-                triage_by_casr_ls.append(triage_by_casr)
                 cpu_id = free_cpu_ls.pop(0)
                 container_id = utility.get_cmd_res(
                     f"""
@@ -250,8 +256,11 @@ class CasrTriageAnalysis:
                     progress, last_triaged_crashes_num
                 )
         triage_results = {}
-        for triage_by_casr in triage_by_casr_ls:
-            fuzzer, target, repeat = utility.parse_path_by(triage_by_casr)
+        for test_path in utility.test_paths(WORK_DIR):
+            fuzzer, target, repeat = utility.parse_path_by(test_path)
+            triage_by_casr = os.path.join(
+                WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
+            )
             triage = {
                 "fuzzer": fuzzer,
                 "repeat": repeat,
