@@ -20,6 +20,7 @@ ENV OUT		/out
 ENV SHARED 	/shared
 ENV LOCK	/lock
 ENV TRIAGE_BY_CASR /triage_by_casr
+ENV COV /cov
 
 ENV CC  /usr/bin/gcc
 ENV CXX /usr/bin/g++
@@ -43,9 +44,9 @@ RUN mkdir -p ${SHARED} ${OUT} ${LOCK} && \
 	chown hesitater:hesitater ${SHARED} ${OUT} ${LOCK} && \
 	chmod 744 ${SHARED} ${OUT} ${LOCK}
 
-RUN git clone --depth=1 https://github.com/vanhauser-thc/afl-cov && \
-	(cd afl-cov && make install) && \
-	rm -rf afl-cov
+# RUN git clone --depth=1 https://github.com/vanhauser-thc/afl-cov && \
+# 	(cd afl-cov && make install) && \
+# 	rm -rf afl-cov
 
 # ENV PATH=$PATH:${SRC}/cargo/bin
 # ENV CARGO_HOME=${SRC}/cargo
@@ -83,10 +84,11 @@ RUN chown hesitater:hesitater ${TARGET}
 USER hesitater:hesitater
 RUN ${TARGET}/fetch.sh
 
-RUN ${FUZZER}/instrument.sh
+# RUN ${FUZZER}/instrument.sh
 
 COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/run.sh ${SRC}/run.sh
 COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/triage_by_casr.sh ${SRC}/triage_by_casr.sh
+COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/line_cov_by_aflcov.sh ${SRC}/line_cov_by_aflcov.sh
 RUN chmod +x ${SRC}/*.sh && \
 	echo 'alias ls="ls --color=auto"' >> ~/.bashrc
 
