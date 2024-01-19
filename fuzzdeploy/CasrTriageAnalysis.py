@@ -8,8 +8,7 @@ from openpyxl.styles import Font, PatternFill
 from . import utility
 from .Builder import Builder
 from .ExcelManager import ExcelManager
-
-MEMORY_RELATED_BUGS = "memory_related_bugs"
+from .utility import MEMORY_RELATED_BUGS
 
 
 class CasrTriageAnalysis:
@@ -144,6 +143,19 @@ class CasrTriageAnalysis:
             if fuzzer_stats_path is None:
                 utility.console.print(
                     f"[yellow]Warning: fuzzer_stats not found in {test_path}, maybe fine.[/yellow]"
+                )
+            fuzzer, target, repeat = utility.parse_path_by(test_path)
+            triage_by_casr = os.path.join(
+                WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
+            )
+            triaged_num=0
+            if os.path.exists(os.path.join(triage_by_casr, "failed")):
+                triaged_num += len(
+                    os.listdir(os.path.join(triage_by_casr, "failed"))
+                )
+            if os.path.exists(os.path.join(triage_by_casr, "reports")):
+                triaged_num += len(
+                    os.listdir(os.path.join(triage_by_casr, "reports"))
                 )
             for foldername, subfolders, filenames in os.walk(test_path):
                 if "crashes" in subfolders:
@@ -382,7 +394,7 @@ class CasrTriageAnalysis:
 
     @staticmethod
     # @utility.time_count("BUG FOUND BY TIME DONE!")
-    def bug_found_by_speed(WORK_DIR):
+    def get_bug_found_by_speed(WORK_DIR):
         assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
         bug_info = {}
         for summary_path in utility.summary_paths(WORK_DIR):
@@ -422,13 +434,13 @@ class CasrTriageAnalysis:
         return bug_info
 
     @staticmethod
-    # @utility.time_count("SAVE BUG FOUND BY TIME DONE!")
+    # @utility.time_count("SAVE BUG FOUND BY SPEED DONE!")
     def save_bug_found_by_speed(WORK_DIR, OUTPUT_FILE=None):
-        bug_info = CasrTriageAnalysis.bug_found_by_speed(WORK_DIR)
+        bug_info = CasrTriageAnalysis.get_bug_found_by_speed(WORK_DIR)
         if OUTPUT_FILE is None:
             OUTPUT_FILE = os.path.join(
                 os.path.dirname(WORK_DIR),
-                f"{os.path.basename(WORK_DIR)}_bug_found_by_time.xlsx",
+                f"{os.path.basename(WORK_DIR)}_bug_found_by_speed.xlsx",
             )
         excel_manager = ExcelManager()
         for target in sorted(bug_info.keys()):
@@ -460,7 +472,7 @@ class CasrTriageAnalysis:
                             name="Calibri",
                             size=17,
                             color=CasrTriageAnalysis.get_severity_color(
-                                display_field.split("/")[0]
+                                display_field.split("/")[0].strip()
                             ),
                         )
                     }
@@ -481,7 +493,7 @@ class CasrTriageAnalysis:
             for item in table_data:
                 tmp_data.setdefault(item["fuzzer"], {}).setdefault(item["repeat"], {})[
                     item["bug_type"] + "/" + item["crash_line"]
-                ] = (item["time"] + " \ " + item["execs"])
+                ] = (item["time"] + " / " + item["execs"])
             table_data = [
                 {"fuzzer": fuzzer, "repeat": repeat, **tmp_data[fuzzer][repeat]}
                 for fuzzer in tmp_data

@@ -21,6 +21,13 @@ if [ -z "$crashes_dir" ]; then
     exit 1
 fi
 mkdir -p $reports_dir $failed_dir $reports_unique_line
+reports_count=$(find "$failed_dir" -type f | wc -l)
+failed_count=$(find "$failed_dir" -type f | wc -l)
+crashes_count=$(find "$reports_dir" -type f -not -name 'README.txt' | wc -l)
+if [ "$((reports_count + failed_count))" -eq "$crashes_count" ]; then
+    echo "All crashes have been triaged"
+    exit 0
+fi
 
 current_jobs=0
 for file in "$crashes_dir"/*; do

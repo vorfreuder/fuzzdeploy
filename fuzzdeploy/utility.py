@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import time
+from datetime import timedelta
 
 import psutil
 from rich.console import Console
@@ -16,6 +17,7 @@ from rich.traceback import install
 
 install()
 console = Console()
+MEMORY_RELATED_BUGS = "memory_related_bugs"
 
 
 def get_free_cpu_range():
@@ -168,3 +170,22 @@ def get_readable_time(seconds):
         elapsed_time += f"{minutes}m"
     elapsed_time += f"{seconds}s"
     return elapsed_time
+
+
+def human_readable_to_timedelta(human_readable_time):
+    # 使用正则表达式提取时间单位和值
+    matches = re.findall(r"(\d+)([dhms])", human_readable_time)
+
+    total_seconds = 0
+    for value, unit in matches:
+        value = int(value)
+        if unit == "d":
+            total_seconds += value * 24 * 3600
+        elif unit == "h":
+            total_seconds += value * 3600
+        elif unit == "m":
+            total_seconds += value * 60
+        elif unit == "s":
+            total_seconds += value
+
+    return timedelta(seconds=total_seconds)
