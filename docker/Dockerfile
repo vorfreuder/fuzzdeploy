@@ -84,7 +84,7 @@ RUN chown hesitater:hesitater ${TARGET}
 USER hesitater:hesitater
 RUN ${TARGET}/fetch.sh
 
-# RUN ${FUZZER}/instrument.sh
+RUN ${FUZZER}/instrument.sh
 
 COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/run.sh ${SRC}/run.sh
 COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/triage_by_casr.sh ${SRC}/triage_by_casr.sh
