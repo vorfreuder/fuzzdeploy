@@ -2,11 +2,11 @@ import os
 import re
 import time
 
-import psutil
 from openpyxl.styles import Font, PatternFill
 
 from . import utility
 from .Builder import Builder
+from .CPUAllocator import CPUAllocator
 from .ExcelManager import ExcelManager
 from .utility import MEMORY_RELATED_BUGS
 
@@ -126,11 +126,6 @@ class CasrTriageAnalysis:
             fuzzer, target, repeat = utility.parse_path_by(test_path)
             TARGETS.add(target)
         Builder.build_imgs(FUZZERS=["casr"], TARGETS=list(TARGETS))
-        container_id_dict = {}
-        cpu_count = psutil.cpu_count()
-        if cpu_count > 1:
-            cpu_count -= 1
-        free_cpu_ls = [i for i in range(cpu_count)]
 
         # calculate crashes sum
         def get_triaged_crashes_num(triaged_path):
@@ -183,6 +178,7 @@ class CasrTriageAnalysis:
             utility.TimeElapsedColumn(),
             transient=True,
         ) as progress:
+            cpu_allocator = CPUAllocator()
             last_triaged_crashes_num = 0
 
             def update_progress(progress, last_triaged_crashes_num):
@@ -210,19 +206,17 @@ class CasrTriageAnalysis:
             )
             for test_path in untriaged_paths:
                 fuzzer, target, repeat = utility.parse_path_by(test_path)
-                while len(free_cpu_ls) == 0:
-                    for container_id in list(container_id_dict.keys()):
-                        if not utility.is_container_running(container_id):
-                            free_cpu_ls.extend(container_id_dict.pop(container_id))
-                    time.sleep(1)
-                    last_triaged_crashes_num = update_progress(
-                        progress, last_triaged_crashes_num
-                    )
                 triage_by_casr = os.path.join(
                     WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
                 )
                 os.makedirs(triage_by_casr, exist_ok=True)
-                cpu_id = free_cpu_ls.pop(0)
+                while True:
+                    cpu_id = cpu_allocator.get_free_cpu(sleep_time=1, time_out=10)
+                    last_triaged_crashes_num = update_progress(
+                        progress, last_triaged_crashes_num
+                    )
+                    if cpu_id is not None:
+                        break
                 container_id = utility.get_cmd_res(
                     f"""
             docker run \
@@ -238,22 +232,23 @@ class CasrTriageAnalysis:
             -c '${{SRC}}/triage_by_casr.sh'
                     """
                 ).strip()
-                container_id_dict[container_id] = [cpu_id]
-            while len(container_id_dict) > 0:
-                while len(free_cpu_ls) > 0:
-                    min_container_id = min(
-                        container_id_dict, key=lambda k: len(container_id_dict[k])
-                    )
-                    container_id_dict[min_container_id].append(free_cpu_ls.pop(0))
-                    utility.get_cmd_res(
-                        f"docker update --cpuset-cpus {','.join([str(i) for i in container_id_dict[min_container_id]])} {min_container_id} 2>/dev/null"
-                    )
-                for container_id in list(container_id_dict.keys()):
-                    if not utility.is_container_running(container_id):
-                        free_cpu_ls.extend(container_id_dict.pop(container_id))
-                time.sleep(5)
+                cpu_allocator.append(container_id, cpu_id)
+            while len(cpu_allocator.container_id_dict) > 0:
                 last_triaged_crashes_num = update_progress(
                     progress, last_triaged_crashes_num
+                )
+                cpu_id = cpu_allocator.get_free_cpu(sleep_time=5, time_out=10)
+                if cpu_id is None:
+                    continue
+                container_id_dict = cpu_allocator.container_id_dict
+                if len(container_id_dict) == 0:
+                    break
+                min_container_id = min(
+                    container_id_dict, key=lambda k: len(container_id_dict[k])
+                )
+                allocated_cpu_ls = cpu_allocator.append(min_container_id, cpu_id)
+                utility.get_cmd_res(
+                    f"docker update --cpuset-cpus {','.join(allocated_cpu_ls)} {min_container_id} 2>/dev/null"
                 )
         triage_results = {}
         for test_path in utility.test_paths(WORK_DIR):

@@ -3,13 +3,18 @@ import os
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
-from .utility import realLength
-
 
 class ExcelManager:
     def __init__(self):
         self.workbook = Workbook()
         self.workbook.remove(self.workbook["Sheet"])
+
+    @staticmethod
+    def realLength(string):
+        """Calculate the byte length of a mixed single- and double-byte string"""
+        dualByteNum = len("".join(re.compile("[^\x00-\xff]+").findall(string)))
+        singleByteNum = len(string) - dualByteNum
+        return (dualByteNum, singleByteNum, dualByteNum * 2 + singleByteNum)
 
     def create_sheet(self, sheet_name):
         self.sheet = self.workbook.create_sheet(title=sheet_name)

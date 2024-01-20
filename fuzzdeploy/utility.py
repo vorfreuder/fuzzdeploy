@@ -4,7 +4,6 @@ import subprocess
 import time
 from datetime import timedelta
 
-import psutil
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -20,45 +19,12 @@ console = Console()
 MEMORY_RELATED_BUGS = "memory_related_bugs"
 
 
-def get_free_cpu_range():
-    while True:
-        cpu_count = psutil.cpu_count()
-        num_samples = 5
-        cpu_percent_samples = [
-            psutil.cpu_percent(interval=0.1, percpu=True) for _ in range(num_samples)
-        ]
-        avg_cpu_percent = [
-            sum(cpu_percent[i] for cpu_percent in cpu_percent_samples) / num_samples
-            for i in range(cpu_count)
-        ]
-        free_cpu_range = [i for i, load in enumerate(avg_cpu_percent) if load <= 50]
-        if len(free_cpu_range) > 0:
-            return free_cpu_range
-        time.sleep(1)
-
-
 def get_cmd_res(command):
     try:
         return subprocess.check_output(command, shell=True, universal_newlines=True)
     except subprocess.CalledProcessError as e:
         # print("Error executing command:", e)
         return None
-
-
-def is_container_running(container_id):
-    res = get_cmd_res(
-        f"docker inspect --format '{{{{.State.Running}}}}' {container_id} 2>/dev/null"
-    )
-    if res != None:
-        res = res.strip()
-    return res == "true"
-
-
-def realLength(string):
-    """Calculate the byte length of a mixed single- and double-byte string"""
-    dualByteNum = len("".join(re.compile("[^\x00-\xff]+").findall(string)))
-    singleByteNum = len(string) - dualByteNum
-    return (dualByteNum, singleByteNum, dualByteNum * 2 + singleByteNum)
 
 
 def time_count(msg):

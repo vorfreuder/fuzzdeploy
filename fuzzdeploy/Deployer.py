@@ -7,6 +7,7 @@ import time
 import psutil
 
 from . import utility
+from .CPUAllocator import CPUAllocator
 
 
 class Deployer:
@@ -83,16 +84,11 @@ docker containers removed"
 
         signal.signal(signal.SIGINT, sigint_handler)
 
-        free_cpu_ls = CPU_RANGE
+        cpu_allocator = CPUAllocator(CPU_RANGE)
         for index in REPEAT:
             for fuzzer in FUZZERS:
                 for target in TARGETS.keys():
-                    while len(free_cpu_ls) == 0:
-                        for container_id in list(container_id_dict.keys()):
-                            if not utility.is_container_running(container_id):
-                                free_cpu_ls.append(container_id_dict.pop(container_id))
-                        time.sleep(10)
-                    cpu_id = free_cpu_ls.pop(0)
+                    cpu_id = cpu_allocator.get_free_cpu()
                     container_id = utility.get_cmd_res(
                         f"""
         docker run \
@@ -112,7 +108,7 @@ docker containers removed"
         -c '${{SRC}}/run.sh'
                         """
                     ).strip()
-                    container_id_dict[container_id] = cpu_id
+                    cpu_allocator.append(container_id, cpu_id)
                     utility.console.print(
                         datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         container_id[:12].ljust(12),
@@ -122,8 +118,7 @@ docker containers removed"
                         "starts on cpu",
                         cpu_id,
                     )
-        for container_id in container_id_dict.keys():
-            utility.get_cmd_res(f"docker wait {container_id} 2> /dev/null")
+        cpu_allocator.wait_for_done()
         utility.console.print(
             f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} All DONE!"
         )
