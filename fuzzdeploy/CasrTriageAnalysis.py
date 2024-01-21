@@ -1,6 +1,5 @@
 import os
 import re
-import time
 
 from openpyxl.styles import Font, PatternFill
 

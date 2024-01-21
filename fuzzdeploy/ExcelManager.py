@@ -1,5 +1,4 @@
-import os
-
+import re
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -93,7 +92,7 @@ class ExcelManager:
                 max_length = 0
                 for cell in col:
                     try:
-                        cell_len = realLength(str(cell.value))[2]
+                        cell_len = ExcelManager.realLength(str(cell.value))[2]
                         if cell_len > max_length:
                             max_length = cell_len
                     except:
