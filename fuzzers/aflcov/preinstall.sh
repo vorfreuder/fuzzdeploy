@@ -10,10 +10,6 @@ apt-get install -y \
     lsb-release software-properties-common \
     lcov
 
-git clone --depth=1 https://github.com/vanhauser-thc/afl-cov
-(cd afl-cov && make install)
-rm -rf afl-cov
-
 wget https://mirrors.tuna.tsinghua.edu.cn/llvm-apt/llvm.sh
 chmod +x llvm.sh
 ./llvm.sh 12 all -m https://mirrors.tuna.tsinghua.edu.cn/llvm-apt
