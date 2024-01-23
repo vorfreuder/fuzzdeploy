@@ -1,7 +1,7 @@
 FROM ubuntu:18.04
 
 RUN cp /etc/apt/sources.list /etc/apt/sources.list.bak && \
-	# you may comment the following 6 lines if you are not in China
+	# you may comment the following six lines if you don't need to use tsinghua mirror
 	echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse" > /etc/apt/sources.list && \
 	echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
 	echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse" >> /etc/apt/sources.list && \
@@ -18,9 +18,9 @@ ARG build_type=release
 ENV SRC		/src
 ENV OUT		/out
 ENV SHARED 	/shared
-ENV LOCK	/lock
 ENV TRIAGE_BY_CASR /triage_by_casr
 ENV COV /cov
+ENV AFLSHOWMAP /aflshowmap
 
 ENV CC  /usr/bin/gcc
 ENV CXX /usr/bin/g++
@@ -40,9 +40,9 @@ RUN mkdir -p /home && \
 	chown hesitater:hesitater /home
 RUN	echo "hesitater:root" | chpasswd && usermod -a -G sudo hesitater && echo "hesitater ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-RUN mkdir -p ${SHARED} ${OUT} ${LOCK} && \
-	chown hesitater:hesitater ${SHARED} ${OUT} ${LOCK} && \
-	chmod 744 ${SHARED} ${OUT} ${LOCK}
+RUN mkdir -p ${SHARED} ${OUT} ${TRIAGE_BY_CASR} ${COV} ${AFLSHOWMAP} && \
+	chown hesitater:hesitater ${SHARED} ${OUT} ${TRIAGE_BY_CASR} ${COV} ${AFLSHOWMAP} && \
+	chmod 744 ${SHARED} ${OUT} ${TRIAGE_BY_CASR} ${COV} ${AFLSHOWMAP}
 
 # RUN git clone --depth=1 https://github.com/vanhauser-thc/afl-cov && \
 # 	(cd afl-cov && make install) && \
@@ -89,6 +89,7 @@ RUN ${FUZZER}/instrument.sh
 COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/run.sh ${SRC}/run.sh
 COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/triage_by_casr.sh ${SRC}/triage_by_casr.sh
 COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/line_cov_by_aflcov.sh ${SRC}/line_cov_by_aflcov.sh
+COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/edges_by_aflshowmap.sh ${SRC}/edges_by_aflshowmap.sh
 RUN chmod +x ${SRC}/*.sh && \
 	echo 'alias ls="ls --color=auto"' >> ~/.bashrc
 

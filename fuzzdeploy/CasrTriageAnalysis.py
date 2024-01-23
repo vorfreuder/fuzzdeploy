@@ -160,6 +160,8 @@ class CasrTriageAnalysis:
                     fuzzer, target, repeat = utility.parse_path_by(test_path)
                     crashes_sum[f"{fuzzer}/{target}/{repeat}"] = len(files)
                     break
+            if f"{fuzzer}/{target}/{repeat}" not in crashes_sum:
+                continue
             if triaged_num != crashes_sum[f"{fuzzer}/{target}/{repeat}"]:
                 untriaged_paths.append(test_path)
             elif triaged_num == 0 and (
