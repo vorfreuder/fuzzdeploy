@@ -21,7 +21,7 @@ class CoverageAnalysis:
         WORK_DIR_COV = os.path.join(WORK_DIR, "cov")
         # check if images exist
         TARGETS = set()
-        for test_path in utility.test_paths(WORK_DIR):
+        for test_path in utility.get_workdir_paths(WORK_DIR):
             assert os.path.exists(
                 os.path.join(test_path, "target_args")
             ), f"target_args not found in {test_path}"
@@ -29,7 +29,7 @@ class CoverageAnalysis:
             TARGETS.add(target)
         Builder.build_imgs(FUZZERS=["aflcov"], TARGETS=list(TARGETS))
         cpu_allocator = CPUAllocator()
-        for test_path in utility.test_paths(WORK_DIR):
+        for test_path in utility.get_workdir_paths(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(test_path)
             coverage_path = os.path.join(WORK_DIR_COV, fuzzer, target, repeat)
             if os.path.exists(coverage_path):
@@ -53,7 +53,7 @@ class CoverageAnalysis:
             ).strip()
             cpu_allocator.append(container_id, cpu_id)
         cpu_allocator.wait_for_done()
-        for test_path in utility.test_paths(WORK_DIR):
+        for test_path in utility.get_workdir_paths(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(test_path)
             coverage_log_path = os.path.join(
                 WORK_DIR_COV, fuzzer, target, repeat, "afl-cov.log"

@@ -64,20 +64,20 @@ def time_count(msg):
 
 def parse_path_by(path):
     path_parts = path.split("/")
-    if "ar" in path_parts:
-        ar_index = path_parts.index("ar")
-    elif "triage_by_casr" in path_parts:
-        ar_index = path_parts.index("triage_by_casr")
+    for i, part in enumerate(path_parts):
+        if part == "ar" or part == "triage_by_casr":
+            index = i
+            break
     else:
         assert False, f"Can't find ar or triage_by_casr in {path}!"
-    fuzzer = path_parts[ar_index + 1]
-    target = path_parts[ar_index + 2]
-    repeat = path_parts[ar_index + 3]
+    fuzzer = path_parts[index + 1]
+    target = path_parts[index + 2]
+    repeat = path_parts[index + 3]
     return fuzzer, target, repeat
 
 
-def test_paths(work_dir):
-    ar_path = os.path.join(work_dir, "ar")
+def get_workdir_paths(work_dir, suffix="ar"):
+    ar_path = os.path.join(work_dir, suffix)
     for fuzzer in os.listdir(ar_path):
         fuzzer_path = os.path.join(ar_path, fuzzer)
         if not os.path.isdir(fuzzer_path):

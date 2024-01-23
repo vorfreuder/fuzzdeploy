@@ -121,7 +121,7 @@ class CasrTriageAnalysis:
         WORK_DIR_TRIAGE_BY_CASR = os.path.join(WORK_DIR, "triage_by_casr")
         # check if images exist
         TARGETS = set()
-        for test_path in utility.test_paths(WORK_DIR):
+        for test_path in utility.get_workdir_paths(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(test_path)
             TARGETS.add(target)
         Builder.build_imgs(FUZZERS=["casr"], TARGETS=list(TARGETS))
@@ -138,7 +138,7 @@ class CasrTriageAnalysis:
         crashes_sum = {}
         current_crashes_num = {}
         untriaged_paths = []
-        for test_path in utility.test_paths(WORK_DIR):
+        for test_path in utility.get_workdir_paths(WORK_DIR):
             assert os.path.exists(
                 os.path.join(test_path, "target_args")
             ), f"target_args not found in {test_path}"
@@ -252,7 +252,7 @@ class CasrTriageAnalysis:
                     f"docker update --cpuset-cpus {','.join(allocated_cpu_ls)} {min_container_id} 2>/dev/null"
                 )
         triage_results = {}
-        for test_path in utility.test_paths(WORK_DIR):
+        for test_path in utility.get_workdir_paths(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(test_path)
             triage_by_casr = os.path.join(
                 WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat

@@ -30,7 +30,7 @@ class StateAnalysis:
         assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
         no_fuzzer_stats_ls = []
         state_results = {}
-        for test_path in utility.test_paths(WORK_DIR):
+        for test_path in utility.get_workdir_paths(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(test_path)
             fuzzer_stats_path = utility.search_file(test_path, "fuzzer_stats")
             if fuzzer_stats_path is None:
