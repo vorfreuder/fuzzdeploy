@@ -33,7 +33,12 @@ class Deployer:
         assert FUZZERS is not None, "FUZZERS should not be None"
         assert TARGETS is not None, "TARGETS should not be None"
         assert TIMEOUT is not None, "TIMEOUT should not be None"
-        assert FUZZERS_ARGS is not None, "FUZZERS_ARGS should not be None"
+        if FUZZERS_ARGS is None:
+            FUZZERS_ARGS = {}
+            for fuzzer in FUZZERS:
+                FUZZERS_ARGS[fuzzer] = {}
+                for target in TARGETS.keys():
+                    FUZZERS_ARGS[fuzzer][target] = ""
         WORK_DIR = os.path.abspath(WORK_DIR)
         WORK_DIR_AR = os.path.join(WORK_DIR, "ar")
         if not isinstance(REPEAT, (list, tuple)):
