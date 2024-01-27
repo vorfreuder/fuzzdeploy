@@ -309,6 +309,11 @@ class CasrTriageAnalysis:
         return 2, field
 
     @staticmethod
+    def sort_by_severity_and_crashline(bug_field):
+        field, crashline = bug_field.split("/", 1)
+        return *CasrTriageAnalysis.sort_by_severity(field), crashline
+
+    @staticmethod
     def get_severity_color(field):
         color = "000000"
         if field in CasrTriageAnalysis.Severity["EXPLOITABLE"]:
@@ -406,8 +411,10 @@ class CasrTriageAnalysis:
             fuzzer, target, repeat = utility.parse_path_by(summary_path)
             with open(summary_path, "r") as f:
                 lines = f.readlines()
+                is_crash = False
                 for i in range(len(lines)):
                     if "Crash: " in lines[i]:
+                        is_crash = True
                         time = ""
                         execs = ""
                         bug_type = ""
@@ -434,14 +441,25 @@ class CasrTriageAnalysis:
                                 "execs": execs if len(execs) > 0 else "unknown",
                                 "bug_type": bug_type,
                                 "crash_line": crash_line,
+                                "bug_field": bug_type + "/" + crash_line,
                             }
                         )
+                if not is_crash:
+                    bug_info.setdefault(target, []).append(
+                        {
+                            "fuzzer": fuzzer,
+                            "repeat": repeat,
+                        }
+                    )
         return bug_info
 
     @staticmethod
     # @utility.time_count("SAVE BUG FOUND BY SPEED DONE!")
     def save_bug_found_by_speed(WORK_DIR, OUTPUT_FILE=None):
         bug_info = CasrTriageAnalysis.get_bug_found_by_speed(WORK_DIR)
+        # import pprint
+
+        # pprint.pprint(bug_info)
         if OUTPUT_FILE is None:
             OUTPUT_FILE = os.path.join(
                 os.path.dirname(WORK_DIR),
@@ -450,18 +468,18 @@ class CasrTriageAnalysis:
         excel_manager = ExcelManager()
         for target in sorted(bug_info.keys()):
             table_data = bug_info[target]
-            field_order = list(set([item["bug_type"] for item in table_data]))
-            field_order = sorted(field_order, key=CasrTriageAnalysis.sort_by_severity)
-            bug_fields = {}
-            for item in table_data:
-                bug_fields.setdefault(item["bug_type"], []).append(item["crash_line"])
-            for key in bug_fields.keys():
-                bug_fields[key] = sorted(list(set(bug_fields[key])))
-            bug_fields = [
-                bug_type + "/" + crash_line
-                for bug_type in field_order
-                for crash_line in bug_fields[bug_type]
-            ]
+            bug_fields = sorted(
+                list(
+                    set(
+                        [
+                            item["bug_field"]
+                            for item in table_data
+                            if "bug_field" in item
+                        ]
+                    )
+                ),
+                key=CasrTriageAnalysis.sort_by_severity_and_crashline,
+            )
             display_fields = [
                 "fuzzer",
                 "repeat",
@@ -469,7 +487,7 @@ class CasrTriageAnalysis:
             excel_manager.create_sheet(target)
             # the header of table
             excel_manager.set_sheet_header(
-                display_fields + ["SUM"],
+                display_fields + ["total_bugs"],
                 [
                     {
                         "Font": Font(
@@ -477,7 +495,7 @@ class CasrTriageAnalysis:
                             name="Calibri",
                             size=17,
                             color=CasrTriageAnalysis.get_severity_color(
-                                display_field.split("/")[0].strip()
+                                display_field.split("/", 1)[0].strip()
                             ),
                         )
                     }
@@ -496,9 +514,12 @@ class CasrTriageAnalysis:
             )
             tmp_data = {}
             for item in table_data:
-                tmp_data.setdefault(item["fuzzer"], {}).setdefault(item["repeat"], {})[
-                    item["bug_type"] + "/" + item["crash_line"]
-                ] = (item["time"] + " / " + item["execs"])
+                tmp_data.setdefault(item["fuzzer"], {}).setdefault(item["repeat"], {})
+                if "bug_field" not in item:
+                    continue
+                tmp_data[item["fuzzer"]][item["repeat"]][item["bug_field"]] = (
+                    item["time"] + " / " + item["execs"]
+                )
             table_data = [
                 {"fuzzer": fuzzer, "repeat": repeat, **tmp_data[fuzzer][repeat]}
                 for fuzzer in tmp_data
@@ -507,7 +528,7 @@ class CasrTriageAnalysis:
             table_data = sorted(
                 table_data,
                 key=lambda x: (
-                    len(x) - 2,
+                    len(x) - 2,  # order by the number of bugs
                     x["fuzzer"],
                     x["repeat"],
                 ),

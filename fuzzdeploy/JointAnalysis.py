@@ -177,7 +177,7 @@ class JointAnalysis:
 
     @staticmethod
     def merge_save_bug_found_by_speed_excels(
-        EXCEL_PATHS, OUTPUT_FILE, MEMORY_RELATED_BUGS_FIELD=False
+        EXCEL_PATHS, OUTPUT_FILE, MEMORY_RELATED_BUGS_FIELD=False, TRIAGE_RULE=None
     ):
         assert OUTPUT_FILE is not None, f"{OUTPUT_FILE} is None"
         targets = set()
@@ -188,6 +188,7 @@ class JointAnalysis:
         excel_manager = ExcelManager()
         for target in sorted(list(targets)):
             excels = {}
+            repeats = {}
             for excel_path in EXCEL_PATHS:
                 wb = openpyxl.load_workbook(excel_path)
                 if target not in wb.sheetnames:
@@ -203,69 +204,112 @@ class JointAnalysis:
                 for data_col in sheet.iter_cols(min_col=2, values_only=True):
                     for header_field, data_value in zip(header_fields, data_col):
                         if header_field == "fuzzer":
-                            excel = excels.setdefault(data_value, {})
+                            excel = excels.setdefault(data_value, [])
+                            repeats.setdefault(data_value, 0)
+                            repeats[data_value] += 1
                         break
                     else:
                         assert (
                             excel is not None
                         ), f"fuzzer not found in the first column of {target} in {excel_path}"
-                    for header_field, data_value in zip(header_fields, data_col):
-                        if (
-                            header_field != "fuzzer"
-                            and header_field != "repeat"
-                            and header_field != "SUM"
-                            and data_value is not None
-                            and len(str(data_value).strip()) > 0
-                        ):
-                            if header_field not in excel:
-                                excel[header_field] = data_value
-                            else:
-                                bug_found_time, _ = data_value.split("/")
-                                bug_found_time = bug_found_time.strip()
-                                pre_bug_found_time, _ = excel[header_field].split("/")
-                                pre_bug_found_time = pre_bug_found_time.strip()
-                                if (
-                                    bug_found_time == "unknown"
-                                    or pre_bug_found_time == "unknown"
-                                ):
-                                    continue
-                                bug_found_time = utility.human_readable_to_timedelta(
-                                    bug_found_time
-                                )
-                                pre_bug_found_time = (
-                                    utility.human_readable_to_timedelta(
-                                        pre_bug_found_time
-                                    )
-                                )
-                                if bug_found_time < pre_bug_found_time:
-                                    excel[header_field] = data_value
+                    excel.append(
+                        {
+                            header_field: data_value
+                            for header_field, data_value in zip(header_fields, data_col)
+                            if data_value is not None
+                            and "/" in header_field
+                            and "/" in data_value
+                        }
+                    )
             display_fields = set()
-            for fuzzer, data in excels.items():
-                display_fields.update(data.keys())
-                data["SUM"] = len(data.keys())
-                data["fuzzer"] = fuzzer
+            sheet_data = []
+            # flatten data
+            for fuzzer, total in excels.items():
+                tmp_dict = {}
+                average = 0
+                m_average = 0
+                has_seen = set()
+                for item in total:
+                    for header_field, data_value in item.items():
+                        if TRIAGE_RULE:
+                            if TRIAGE_RULE[target][header_field] not in has_seen:
+                                has_seen.add(TRIAGE_RULE[target][header_field])
+                                average += 1
+                                if CasrTriageAnalysis.is_memory_related_bug(
+                                    header_field.split("/")[0].strip()
+                                ):
+                                    m_average += 1
+                            header_field = TRIAGE_RULE[target][header_field]
+                        else:
+                            average += 1
+                            if CasrTriageAnalysis.is_memory_related_bug(
+                                header_field.split("/")[0].strip()
+                            ):
+                                m_average += 1
+                        display_fields.add(header_field)
+                        if header_field not in tmp_dict:
+                            tmp_dict[header_field] = data_value
+                            continue
+                        bug_found_time, _ = data_value.split("/")
+                        bug_found_time = bug_found_time.strip()
+                        pre_bug_found_time, _ = tmp_dict[header_field].split("/")
+                        pre_bug_found_time = pre_bug_found_time.strip()
+                        if (
+                            bug_found_time == "unknown"
+                            or pre_bug_found_time == "unknown"
+                        ):
+                            continue
+                        bug_found_time = utility.human_readable_to_timedelta(
+                            bug_found_time
+                        )
+                        pre_bug_found_time = utility.human_readable_to_timedelta(
+                            pre_bug_found_time
+                        )
+                        if bug_found_time < pre_bug_found_time:
+                            tmp_dict[header_field] = data_value
+                    has_seen.clear()
+                # print(target, fuzzer, m_average, average,repeats[fuzzer])
+                average /= repeats[fuzzer]
+                m_average /= repeats[fuzzer]
+                tmp_dict["total_bugs"] = (
+                    str(len(tmp_dict.keys()))
+                    + "/"
+                    + str(round(average, 2))
+                    + "/"
+                    + str(repeats[fuzzer])
+                )
+                tmp_dict["fuzzer"] = fuzzer
                 if MEMORY_RELATED_BUGS_FIELD:
-                    data[MEMORY_RELATED_BUGS] = sum(
+                    memory_related_bugs = sum(
                         [
                             1
-                            for field in data.keys()
+                            for field in tmp_dict.keys()
                             if field != "fuzzer"
-                            and field != "SUM"
+                            and field != "total_bugs"
                             and CasrTriageAnalysis.is_memory_related_bug(
                                 field.split("/")[0].strip()
                             )
                         ]
                     )
+                    tmp_dict[MEMORY_RELATED_BUGS] = (
+                        str(memory_related_bugs)
+                        + "/"
+                        + str(round(m_average, 2))
+                        + "/"
+                        + str(repeats[fuzzer])
+                    )
                     assert (
-                        data[MEMORY_RELATED_BUGS] <= data["SUM"]
+                        memory_related_bugs <= len(tmp_dict.keys()) - 2
                     ), "This should not happen"
+                sheet_data.append(tmp_dict)
             display_fields = sorted(
-                list(display_fields), key=CasrTriageAnalysis.sort_by_severity
+                list(display_fields),
+                key=CasrTriageAnalysis.sort_by_severity_and_crashline,
             )
             display_fields = ["fuzzer"] + display_fields
             if MEMORY_RELATED_BUGS_FIELD:
                 display_fields += [MEMORY_RELATED_BUGS]
-            display_fields += ["SUM"]
+            display_fields += ["total_bugs"]
             excel_manager.create_sheet(target)
             excel_manager.set_sheet_header(
                 display_fields,
@@ -285,9 +329,9 @@ class JointAnalysis:
                 direction="vertical",
             )
             for data in sorted(
-                excels.values(),
+                sheet_data,
                 key=lambda x: (
-                    x["SUM"],
+                    x["total_bugs"],
                     x["fuzzer"],
                 ),
                 reverse=True,
