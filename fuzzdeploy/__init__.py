@@ -1,3 +1,4 @@
+from .BugFoundByTimeAnalysis import BugFoundByTimeAnalysis
 from .Builder import Builder
 from .CasrTriageAnalysis import CasrTriageAnalysis
 from .CoverageAnalysis import CoverageAnalysis

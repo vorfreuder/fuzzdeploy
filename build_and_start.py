@@ -8,38 +8,38 @@ from fuzzdeploy import Builder, Deployer
 FUZZERS = [
     "afl",  # not support: imagemagick
     "aflplusplus",
-    "memlock",  # not support: imagemagick
-    "tortoisefuzz",
+    # "memlock",  # not support: imagemagick
+    # "tortoisefuzz",
 ]
 TARGETS = {
-    "bento4": "mp42hls @@",
-    "binutils": "readelf -w @@",
-    "boolector": "boolector @@",
-    "bzip2": "bzip2recover @@",
-    "cflow": "cflow @@",
-    "cxxfilt": "cxxfilt -t",
-    "exiv2": "exiv2 -pX @@",
-    "flex": "flex @@",
-    "gifsicle": "gifsicle @@ test.gif -o /dev/null",
-    "gpac": "MP4Box -diso @@ -out /dev/null",
-    "gpac_latest": "MP4Box -hint @@",
-    "graphicsmagick": "gm identify @@",
+    # "bento4": "mp42hls @@",
+    # "binutils": "readelf -w @@",
+    # "boolector": "boolector @@",
+    # "bzip2": "bzip2recover @@",
+    # "cflow": "cflow @@",
+    # "cxxfilt": "cxxfilt -t",
+    # "exiv2": "exiv2 -pX @@",
+    # "flex": "flex @@",
+    # "gifsicle": "gifsicle @@ test.gif -o /dev/null",
+    # "gpac": "MP4Box -diso @@ -out /dev/null",
+    # "gpac_latest": "MP4Box -hint @@",
+    # "graphicsmagick": "gm identify @@",
     # "imagemagick": "convert @@ /dev/null",
-    "jasper": "jasper -f @@ -t mif -F /dev/null -T jpg",
-    "jpegoptim": "jpegoptim @@",
-    "libxml2": "xmllint -o /dev/null @@",
-    "lrzip": "lrzip -t @@",
+    # "jasper": "jasper -f @@ -t mif -F /dev/null -T jpg",
+    # "jpegoptim": "jpegoptim @@",
+    # "libxml2": "xmllint -o /dev/null @@",
+    # "lrzip": "lrzip -t @@",
     "mjs": "mjs -f @@",
-    "mxml": "mxmldoc @@",
-    "nasm": "nasm -f bin @@ -o ./tmp",
-    "nasm_2.16.01": "nasm -f bin @@ -o ./tmp",
-    "nm": "nm -C @@",
-    "openh264": "h264dec @@ ./tmp",
-    "openjpeg": "opj_decompress -i @@ -o ./tmp.png",
-    "readelf": "readelf -a @@",
-    "rec2csv": "rec2csv @@",
-    "yaml-cpp": "parse @@",
-    "yara": "yara @@ strings",
+    # "mxml": "mxmldoc @@",
+    # "nasm": "nasm -f bin @@ -o ./tmp",
+    # "nasm_2.16.01": "nasm -f bin @@ -o ./tmp",
+    # "nm": "nm -C @@",
+    # "openh264": "h264dec @@ ./tmp",
+    # "openjpeg": "opj_decompress -i @@ -o ./tmp.png",
+    # "readelf": "readelf -a @@",
+    # "rec2csv": "rec2csv @@",
+    # "yaml-cpp": "parse @@",
+    # "yara": "yara @@ strings",
     "yasm": "yasm @@",
 }
 WORK_DIR = (
@@ -48,7 +48,7 @@ WORK_DIR = (
     else os.path.join(os.path.dirname(os.path.realpath(__file__)), "workdir_test")
 )
 REPEAT = 1
-TIMEOUT = "20m"
+TIMEOUT = "5m"
 CPU_NUM = psutil.cpu_count()
 if CPU_NUM > 50:
     CPU_NUM -= 6
@@ -62,7 +62,7 @@ for fuzzer in FUZZERS:
     FUZZERS_ARGS[fuzzer] = {}
     for target in TARGETS.keys():
         fuzzerargs = ""
-        if ("aflplusplus" in fuzzer) or ("ctxhtfuzz" in fuzzer):
+        if "aflplusplus" in fuzzer:
             if not skip_det:
                 fuzzerargs += "-D "
             if mopt:
@@ -84,3 +84,4 @@ Deployer.start_fuzzing(
     REPEAT=REPEAT,
     CPU_RANGE=CPU_RANGE,
 )
+

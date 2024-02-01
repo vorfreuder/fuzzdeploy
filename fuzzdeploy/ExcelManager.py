@@ -3,6 +3,8 @@ import re
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from .constants import HORIZONTAL, VERTICAL
+
 
 class ExcelManager:
     def __init__(self):
@@ -19,7 +21,7 @@ class ExcelManager:
     def create_sheet(self, sheet_name):
         self.sheet = self.workbook.create_sheet(title=sheet_name)
 
-    def set_sheet_header(self, data, header_styles=None, direction="horizontal"):
+    def set_sheet_header(self, data, header_styles=None, direction=HORIZONTAL):
         if header_styles is None:
             header_styles = [{} for _ in data]
         else:
@@ -32,7 +34,7 @@ class ExcelManager:
         for col_num, (header_text, header_style) in enumerate(
             zip(data, header_styles), 1
         ):
-            if direction == "horizontal":
+            if direction == HORIZONTAL:
                 cell = self.sheet.cell(row=1, column=col_num, value=header_text)
             else:
                 cell = self.sheet.cell(row=col_num, column=1, value=header_text)
@@ -52,7 +54,7 @@ class ExcelManager:
                 PatternFill(),
             )
 
-    def set_sheet_data(self, data, data_styles=None, direction="horizontal"):
+    def set_sheet_data(self, data, data_styles=None, direction=HORIZONTAL):
         if data_styles is None:
             data_styles = [{} for _ in data]
         else:
@@ -62,12 +64,12 @@ class ExcelManager:
         assert len(data) == len(
             data_styles
         ), "data and data_styles should have the same length"
-        if direction == "horizontal":
+        if direction == HORIZONTAL:
             row_num = self.sheet.max_row + 1
         else:
             row_num = self.sheet.max_column + 1
         for col_num, (cell_value, cell_style) in enumerate(zip(data, data_styles), 1):
-            if direction == "horizontal":
+            if direction == HORIZONTAL:
                 cell = self.sheet.cell(row=row_num, column=col_num, value=cell_value)
             else:
                 cell = self.sheet.cell(row=col_num, column=row_num, value=cell_value)

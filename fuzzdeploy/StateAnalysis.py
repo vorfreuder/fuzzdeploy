@@ -3,6 +3,7 @@ import os
 from openpyxl.styles import PatternFill
 
 from . import utility
+from .constants import *
 from .ExcelManager import ExcelManager
 
 
@@ -12,8 +13,8 @@ class StateAnalysis:
         "htfuzz": "FBD26A",
     }
     display_fields = [
-        "fuzzer",
-        "repeat",
+        FUZZER,
+        REPEAT,
         "crashes",  # AFL++ not support
         "pending_favs",
         "execs_done",
@@ -26,17 +27,17 @@ class StateAnalysis:
     ]
 
     @staticmethod
-    def get_state_results(WORK_DIR):
+    def obtain(WORK_DIR):
         assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
         no_fuzzer_stats_ls = []
         state_results = {}
         for test_path in utility.get_workdir_paths(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(test_path)
-            fuzzer_stats_path = utility.search_file(test_path, "fuzzer_stats")
+            fuzzer_stats_path = utility.search_file(test_path, FUZZER_STATS)
             if fuzzer_stats_path is None:
                 no_fuzzer_stats_ls.append(f"{fuzzer}/{target}/{repeat}")
                 continue
-            state = {"fuzzer": fuzzer, "repeat": repeat}
+            state = {FUZZER: fuzzer, REPEAT: repeat}
             with open(fuzzer_stats_path, "r") as f:
                 fuzzer_stats = f.read()
             for item in fuzzer_stats.strip().split("\n"):
@@ -76,13 +77,13 @@ class StateAnalysis:
 
     @staticmethod
     # @utility.time_count("SAVE FUZZER_STATS DONE!")
-    def save_state_results(WORK_DIR, OUTPUT_FILE=None):
+    def save(WORK_DIR, OUTPUT_FILE=None):
         if OUTPUT_FILE is None:
             OUTPUT_FILE = os.path.join(
-                os.path.dirname(WORK_DIR),
+                WORK_DIR,
                 f"{os.path.basename(WORK_DIR)}_fuzzer_stats.xlsx",
             )
-        state_results = StateAnalysis.get_state_results(WORK_DIR)
+        state_results = StateAnalysis.obtain(WORK_DIR)
         excel_manager = ExcelManager()
         display_fields = StateAnalysis.display_fields
         for target in sorted(state_results.keys()):
@@ -100,11 +101,11 @@ class StateAnalysis:
                     [
                         {
                             "Fill": PatternFill(
-                                fgColor=StateAnalysis.fuzzer_colors[item["fuzzer"]],
+                                fgColor=StateAnalysis.fuzzer_colors[item[FUZZER]],
                                 fill_type="solid",
                             )
                         }
-                        if item["fuzzer"] in StateAnalysis.fuzzer_colors.keys()
+                        if item[FUZZER] in StateAnalysis.fuzzer_colors.keys()
                         else {}
                         for _ in display_fields
                     ],

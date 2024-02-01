@@ -11,12 +11,10 @@ WORK_DIR = (
 OUTPUT_FILE = (
     sys.argv[2]
     if len(sys.argv) > 2
-    else os.path.join(
-        os.path.dirname(WORK_DIR), f"{os.path.basename(WORK_DIR)}_fuzzer_stats.xlsx"
-    )
+    else os.path.join(WORK_DIR, f"{os.path.basename(WORK_DIR)}_fuzzer_stats.xlsx")
 )
 StateAnalysis.fuzzer_colors = {
+    "afl": "FBD26A",
     "aflplusplus": "00A0B0",
-    "htfuzz": "FBD26A",
 }
-StateAnalysis.save_state_results(WORK_DIR=WORK_DIR, OUTPUT_FILE=OUTPUT_FILE)
+StateAnalysis.save(WORK_DIR=WORK_DIR, OUTPUT_FILE=OUTPUT_FILE)

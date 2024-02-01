@@ -16,7 +16,6 @@ from rich.traceback import install
 
 install()
 console = Console()
-MEMORY_RELATED_BUGS = "memory_related_bugs"
 
 
 def get_cmd_res(command):
@@ -139,7 +138,6 @@ def get_readable_time(seconds):
 
 
 def human_readable_to_timedelta(human_readable_time):
-    # 使用正则表达式提取时间单位和值
     matches = re.findall(r"(\d+)([dhms])", human_readable_time)
 
     total_seconds = 0

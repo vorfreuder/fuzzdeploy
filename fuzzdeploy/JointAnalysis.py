@@ -6,9 +6,9 @@ from openpyxl.styles import Font, PatternFill
 
 from . import utility
 from .CasrTriageAnalysis import CasrTriageAnalysis
+from .constants import *
 from .ExcelManager import ExcelManager
 from .StateAnalysis import StateAnalysis
-from .utility import MEMORY_RELATED_BUGS
 
 
 class JointAnalysis:
@@ -73,11 +73,11 @@ class JointAnalysis:
                         break
                 excel_manager.set_sheet_data(row_data, row_style)
         excel_manager.save_workbook(OUTPUT_FILE)
-        utility.console.print(f"The merged result can be found in {OUTPUT_FILE}")
+        utility.console.print(f"The joint result can be found in {OUTPUT_FILE}")
         return OUTPUT_FILE
 
     @staticmethod
-    def merge_joint_excels(EXCEL_PATHS, OUTPUT_FILE, MEMORY_RELATED_BUGS_FIELD=False):
+    def merge_joint_excels(EXCEL_PATHS, OUTPUT_FILE, HEAP_RELATED_BUGS_FIELD=False):
         assert OUTPUT_FILE is not None, f"{OUTPUT_FILE} is None"
         excels = {}
         for excel_path in EXCEL_PATHS:
@@ -89,16 +89,16 @@ class JointAnalysis:
                     excel = {}
                     for header_field, data_value in zip(sheet[1], data_row):
                         excel[header_field.value] = data_value
-                    if MEMORY_RELATED_BUGS_FIELD:
-                        excel[MEMORY_RELATED_BUGS] = sum(
+                    if HEAP_RELATED_BUGS_FIELD:
+                        excel[HEAP_RELATED_BUGS] = sum(
                             [
                                 int(excel[field])
                                 for field in excel.keys()
                                 if field not in StateAnalysis.display_fields
                                 and field not in CasrTriageAnalysis.display_fields
-                                and field != MEMORY_RELATED_BUGS
+                                and field != HEAP_RELATED_BUGS
                                 and excel[field] is not None
-                                and CasrTriageAnalysis.is_memory_related_bug(field)
+                                and CasrTriageAnalysis.is_heap_related_bug(field)
                             ]
                         )
                     excels.setdefault(target, []).append(excel)
@@ -113,13 +113,13 @@ class JointAnalysis:
                     )
                     if field not in StateAnalysis.display_fields
                     and field not in CasrTriageAnalysis.display_fields
-                    and field != MEMORY_RELATED_BUGS
+                    and field != HEAP_RELATED_BUGS
                 ],
                 key=CasrTriageAnalysis.sort_by_severity,
             )
-            if MEMORY_RELATED_BUGS_FIELD:
+            if HEAP_RELATED_BUGS_FIELD:
                 display_fields = (
-                    CasrTriageAnalysis.display_fields + [MEMORY_RELATED_BUGS] + header
+                    CasrTriageAnalysis.display_fields + [HEAP_RELATED_BUGS] + header
                 )
             else:
                 display_fields = CasrTriageAnalysis.display_fields + header
@@ -174,188 +174,3 @@ class JointAnalysis:
                 excel_manager.set_sheet_data(row_data, row_style)
         excel_manager.save_workbook(OUTPUT_FILE)
         utility.console.print(f"The merged joint result can be found in {OUTPUT_FILE}")
-
-    @staticmethod
-    def merge_save_bug_found_by_speed_excels(
-        EXCEL_PATHS, OUTPUT_FILE, MEMORY_RELATED_BUGS_FIELD=False, TRIAGE_RULE=None
-    ):
-        assert OUTPUT_FILE is not None, f"{OUTPUT_FILE} is None"
-        targets = set()
-        for excel_path in EXCEL_PATHS:
-            assert os.path.exists(excel_path), f"{excel_path} not exists"
-            wb = openpyxl.load_workbook(excel_path)
-            targets.update(wb.sheetnames)
-        excel_manager = ExcelManager()
-        for target in sorted(list(targets)):
-            excels = {}
-            repeats = {}
-            for excel_path in EXCEL_PATHS:
-                wb = openpyxl.load_workbook(excel_path)
-                if target not in wb.sheetnames:
-                    continue
-                sheet = wb[target]
-                header_fields = [
-                    cell
-                    for row in sheet.iter_cols(min_col=1, max_col=1, values_only=True)
-                    for cell in row
-                ]
-                excel = None
-                # get sheet data
-                for data_col in sheet.iter_cols(min_col=2, values_only=True):
-                    for header_field, data_value in zip(header_fields, data_col):
-                        if header_field == "fuzzer":
-                            excel = excels.setdefault(data_value, [])
-                            repeats.setdefault(data_value, 0)
-                            repeats[data_value] += 1
-                        break
-                    else:
-                        assert (
-                            excel is not None
-                        ), f"fuzzer not found in the first column of {target} in {excel_path}"
-                    excel.append(
-                        {
-                            header_field: data_value
-                            for header_field, data_value in zip(header_fields, data_col)
-                            if data_value is not None
-                            and "/" in header_field
-                            and "/" in data_value
-                        }
-                    )
-            display_fields = set()
-            sheet_data = []
-            # flatten data
-            for fuzzer, total in excels.items():
-                tmp_dict = {}
-                average = 0
-                m_average = 0
-                has_seen = set()
-                for item in total:
-                    for header_field, data_value in item.items():
-                        if TRIAGE_RULE:
-                            if TRIAGE_RULE[target][header_field] not in has_seen:
-                                has_seen.add(TRIAGE_RULE[target][header_field])
-                                average += 1
-                                if CasrTriageAnalysis.is_memory_related_bug(
-                                    header_field.split("/")[0].strip()
-                                ):
-                                    m_average += 1
-                            header_field = TRIAGE_RULE[target][header_field]
-                        else:
-                            average += 1
-                            if CasrTriageAnalysis.is_memory_related_bug(
-                                header_field.split("/")[0].strip()
-                            ):
-                                m_average += 1
-                        display_fields.add(header_field)
-                        if header_field not in tmp_dict:
-                            tmp_dict[header_field] = data_value
-                            continue
-                        bug_found_time, _ = data_value.split("/")
-                        bug_found_time = bug_found_time.strip()
-                        pre_bug_found_time, _ = tmp_dict[header_field].split("/")
-                        pre_bug_found_time = pre_bug_found_time.strip()
-                        if (
-                            bug_found_time == "unknown"
-                            or pre_bug_found_time == "unknown"
-                        ):
-                            continue
-                        bug_found_time = utility.human_readable_to_timedelta(
-                            bug_found_time
-                        )
-                        pre_bug_found_time = utility.human_readable_to_timedelta(
-                            pre_bug_found_time
-                        )
-                        if bug_found_time < pre_bug_found_time:
-                            tmp_dict[header_field] = data_value
-                    has_seen.clear()
-                # print(target, fuzzer, m_average, average,repeats[fuzzer])
-                average /= repeats[fuzzer]
-                m_average /= repeats[fuzzer]
-                tmp_dict["total_bugs"] = (
-                    str(len(tmp_dict.keys()))
-                    + "/"
-                    + str(round(average, 2))
-                    + "/"
-                    + str(repeats[fuzzer])
-                )
-                tmp_dict["fuzzer"] = fuzzer
-                if MEMORY_RELATED_BUGS_FIELD:
-                    memory_related_bugs = sum(
-                        [
-                            1
-                            for field in tmp_dict.keys()
-                            if field != "fuzzer"
-                            and field != "total_bugs"
-                            and CasrTriageAnalysis.is_memory_related_bug(
-                                field.split("/")[0].strip()
-                            )
-                        ]
-                    )
-                    tmp_dict[MEMORY_RELATED_BUGS] = (
-                        str(memory_related_bugs)
-                        + "/"
-                        + str(round(m_average, 2))
-                        + "/"
-                        + str(repeats[fuzzer])
-                    )
-                    assert (
-                        memory_related_bugs <= len(tmp_dict.keys()) - 2
-                    ), "This should not happen"
-                sheet_data.append(tmp_dict)
-            display_fields = sorted(
-                list(display_fields),
-                key=CasrTriageAnalysis.sort_by_severity_and_crashline,
-            )
-            display_fields = ["fuzzer"] + display_fields
-            if MEMORY_RELATED_BUGS_FIELD:
-                display_fields += [MEMORY_RELATED_BUGS]
-            display_fields += ["total_bugs"]
-            excel_manager.create_sheet(target)
-            excel_manager.set_sheet_header(
-                display_fields,
-                [
-                    {
-                        "Font": Font(
-                            bold=True,
-                            name="Calibri",
-                            size=17,
-                            color=CasrTriageAnalysis.get_severity_color(
-                                display_field.split("/")[0].strip()
-                            ),
-                        )
-                    }
-                    for display_field in display_fields
-                ],
-                direction="vertical",
-            )
-            for data in sorted(
-                sheet_data,
-                key=lambda x: (
-                    x["total_bugs"],
-                    x["fuzzer"],
-                ),
-                reverse=True,
-            ):
-                row_data = []
-                row_style = []
-                for display_field in display_fields:
-                    if display_field not in data:
-                        row_data.append("")
-                    else:
-                        row_data.append(data[display_field])
-                    if data["fuzzer"] in JointAnalysis.fuzzer_colors:
-                        row_style.append(
-                            {
-                                "Fill": PatternFill(
-                                    fgColor=JointAnalysis.fuzzer_colors[data["fuzzer"]],
-                                    fill_type="solid",
-                                )
-                            }
-                        )
-                    else:
-                        row_style.append({})
-                excel_manager.set_sheet_data(row_data, row_style, direction="vertical")
-        excel_manager.save_workbook(OUTPUT_FILE)
-        utility.console.print(
-            f"The merged bug found by speed result can be found in {OUTPUT_FILE}"
-        )

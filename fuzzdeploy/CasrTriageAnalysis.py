@@ -5,9 +5,9 @@ from openpyxl.styles import Font, PatternFill
 
 from . import utility
 from .Builder import Builder
+from .constants import *
 from .CPUAllocator import CPUAllocator
 from .ExcelManager import ExcelManager
-from .utility import MEMORY_RELATED_BUGS
 
 
 class CasrTriageAnalysis:
@@ -16,8 +16,8 @@ class CasrTriageAnalysis:
         "htfuzz": "FBD26A",
     }
     display_fields = [
-        "fuzzer",
-        "repeat",
+        FUZZER,
+        REPEAT,
         "unique_line",
         "casr_dedup",
         "casr_dedup_cluster",
@@ -100,7 +100,9 @@ class CasrTriageAnalysis:
     }
 
     @staticmethod
-    def is_memory_related_bug(bug_type):
+    def is_heap_related_bug(bug_type):
+        if "stack" in bug_type.lower():
+            return False
         return bug_type not in (
             "param-overlap",
             "BadInstruction",
@@ -116,9 +118,9 @@ class CasrTriageAnalysis:
 
     @staticmethod
     @utility.time_count("CRASH TRIAGE BY CASR@https://github.com/ispras/casr DONE!")
-    def triage_by_casr(WORK_DIR):
+    def obtain(WORK_DIR):
         assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
-        WORK_DIR_TRIAGE_BY_CASR = os.path.join(WORK_DIR, "triage_by_casr")
+        WORK_DIR_TRIAGE_BY_CASR = os.path.join(WORK_DIR, TRIAGE_BY_CASR)
         # check if images exist
         TARGETS = set()
         for test_path in utility.get_workdir_paths(WORK_DIR):
@@ -140,12 +142,12 @@ class CasrTriageAnalysis:
         untriaged_paths = []
         for test_path in utility.get_workdir_paths(WORK_DIR):
             assert os.path.exists(
-                os.path.join(test_path, "target_args")
-            ), f"target_args not found in {test_path}"
-            fuzzer_stats_path = utility.search_file(test_path, "fuzzer_stats")
+                os.path.join(test_path, TARGET_ARGS)
+            ), f"{TARGET_ARGS} not found in {test_path}"
+            fuzzer_stats_path = utility.search_file(test_path, FUZZER_STATS)
             if fuzzer_stats_path is None:
                 utility.console.print(
-                    f"[yellow]Warning: fuzzer_stats not found in {test_path}, maybe fine.[/yellow]"
+                    f"[yellow]Warning: {FUZZER_STATS} not found in {test_path}, maybe fine.[/yellow]"
                 )
             fuzzer, target, repeat = utility.parse_path_by(test_path)
             triage_by_casr = os.path.join(
@@ -258,8 +260,8 @@ class CasrTriageAnalysis:
                 WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
             )
             triage = {
-                "fuzzer": fuzzer,
-                "repeat": repeat,
+                FUZZER: fuzzer,
+                REPEAT: repeat,
                 "unique_line": 0,
                 "casr_dedup": 0,
                 "casr_dedup_cluster": 0,
@@ -324,15 +326,13 @@ class CasrTriageAnalysis:
 
     @staticmethod
     # @utility.time_count("SAVE TRIAGE BY CASR@https://github.com/ispras/casr DONE!")
-    def save_triage_by_casr_results(
-        WORK_DIR, OUTPUT_FILE=None, MEMORY_RELATED_BUGS_FIELD=False
-    ):
+    def save(WORK_DIR, OUTPUT_FILE=None, HEAP_RELATED_BUGS_FIELD=False):
         if OUTPUT_FILE is None:
             OUTPUT_FILE = os.path.join(
-                os.path.dirname(WORK_DIR),
+                WORK_DIR,
                 f"{os.path.basename(WORK_DIR)}_triage_by_casr.xlsx",
             )
-        triage_results = CasrTriageAnalysis.triage_by_casr(WORK_DIR)
+        triage_results = CasrTriageAnalysis.obtain(WORK_DIR)
         excel_manager = ExcelManager()
         for target in sorted(triage_results.keys()):
             table_data = triage_results[target]
@@ -343,11 +343,9 @@ class CasrTriageAnalysis:
                 if item not in CasrTriageAnalysis.display_fields
             ]
             bug_fields = sorted(bug_fields, key=CasrTriageAnalysis.sort_by_severity)
-            if MEMORY_RELATED_BUGS_FIELD:
+            if HEAP_RELATED_BUGS_FIELD:
                 display_fields = (
-                    CasrTriageAnalysis.display_fields
-                    + [MEMORY_RELATED_BUGS]
-                    + bug_fields
+                    CasrTriageAnalysis.display_fields + [HEAP_RELATED_BUGS] + bug_fields
                 )
             else:
                 display_fields = CasrTriageAnalysis.display_fields + bug_fields
@@ -369,14 +367,14 @@ class CasrTriageAnalysis:
             )
             # the rows of table
             for item in table_data:
-                if MEMORY_RELATED_BUGS_FIELD:
-                    item[MEMORY_RELATED_BUGS] = 0
+                if HEAP_RELATED_BUGS_FIELD:
+                    item[HEAP_RELATED_BUGS] = 0
                     for bug_field in bug_fields:
                         if (
                             bug_field in item.keys()
-                            and CasrTriageAnalysis.is_memory_related_bug(bug_field)
+                            and CasrTriageAnalysis.is_heap_related_bug(bug_field)
                         ):
-                            item[MEMORY_RELATED_BUGS] += item[bug_field]
+                            item[HEAP_RELATED_BUGS] += item[bug_field]
                 excel_manager.set_sheet_data(
                     [
                         item[display_field] if display_field in item.keys() else ""
@@ -385,13 +383,11 @@ class CasrTriageAnalysis:
                     [
                         {
                             "Fill": PatternFill(
-                                fgColor=CasrTriageAnalysis.fuzzer_colors[
-                                    item["fuzzer"]
-                                ],
+                                fgColor=CasrTriageAnalysis.fuzzer_colors[item[FUZZER]],
                                 fill_type="solid",
                             )
                         }
-                        if item["fuzzer"] in CasrTriageAnalysis.fuzzer_colors.keys()
+                        if item[FUZZER] in CasrTriageAnalysis.fuzzer_colors.keys()
                         else {}
                         for _ in display_fields
                     ],
@@ -400,164 +396,4 @@ class CasrTriageAnalysis:
         utility.console.print(
             f"triage by casr@https://github.com/ispras/casr are saved in {OUTPUT_FILE}"
         )
-        return OUTPUT_FILE
-
-    @staticmethod
-    # @utility.time_count("BUG FOUND BY TIME DONE!")
-    def get_bug_found_by_speed(WORK_DIR):
-        assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
-        bug_info = {}
-        for summary_path in utility.summary_paths(WORK_DIR):
-            fuzzer, target, repeat = utility.parse_path_by(summary_path)
-            with open(summary_path, "r") as f:
-                lines = f.readlines()
-                is_crash = False
-                for i in range(len(lines)):
-                    if "Crash: " in lines[i]:
-                        is_crash = True
-                        time = ""
-                        execs = ""
-                        bug_type = ""
-                        crash_line = ""
-                        crash_file_name = lines[i].lstrip("Crash: ").strip()
-                        for item in crash_file_name.split(","):
-                            if item.startswith("time:"):
-                                time = item.lstrip("time:").strip()
-                            elif item.startswith("execs:"):
-                                execs = item.lstrip("execs:").strip()
-                        casrep_split = lines[i + 1].split(":")
-                        bug_type = casrep_split[2].strip()
-                        crash_line = ":".join(casrep_split[3:]).strip()
-                        crash_line = crash_line.split("/")[-1]
-                        bug_info.setdefault(target, []).append(
-                            {
-                                "fuzzer": fuzzer,
-                                "repeat": repeat,
-                                "time": utility.get_readable_time(
-                                    round(int(time) / 1000)
-                                )
-                                if time.isnumeric()
-                                else "unknown",
-                                "execs": execs if len(execs) > 0 else "unknown",
-                                "bug_type": bug_type,
-                                "crash_line": crash_line,
-                                "bug_field": bug_type + "/" + crash_line,
-                            }
-                        )
-                if not is_crash:
-                    bug_info.setdefault(target, []).append(
-                        {
-                            "fuzzer": fuzzer,
-                            "repeat": repeat,
-                        }
-                    )
-        return bug_info
-
-    @staticmethod
-    # @utility.time_count("SAVE BUG FOUND BY SPEED DONE!")
-    def save_bug_found_by_speed(WORK_DIR, OUTPUT_FILE=None):
-        bug_info = CasrTriageAnalysis.get_bug_found_by_speed(WORK_DIR)
-        # import pprint
-
-        # pprint.pprint(bug_info)
-        if OUTPUT_FILE is None:
-            OUTPUT_FILE = os.path.join(
-                os.path.dirname(WORK_DIR),
-                f"{os.path.basename(WORK_DIR)}_bug_found_by_speed.xlsx",
-            )
-        excel_manager = ExcelManager()
-        for target in sorted(bug_info.keys()):
-            table_data = bug_info[target]
-            bug_fields = sorted(
-                list(
-                    set(
-                        [
-                            item["bug_field"]
-                            for item in table_data
-                            if "bug_field" in item
-                        ]
-                    )
-                ),
-                key=CasrTriageAnalysis.sort_by_severity_and_crashline,
-            )
-            display_fields = [
-                "fuzzer",
-                "repeat",
-            ] + bug_fields
-            excel_manager.create_sheet(target)
-            # the header of table
-            excel_manager.set_sheet_header(
-                display_fields + ["total_bugs"],
-                [
-                    {
-                        "Font": Font(
-                            bold=True,
-                            name="Calibri",
-                            size=17,
-                            color=CasrTriageAnalysis.get_severity_color(
-                                display_field.split("/", 1)[0].strip()
-                            ),
-                        )
-                    }
-                    for display_field in display_fields
-                ]
-                + [
-                    {
-                        "Font": Font(
-                            bold=True,
-                            name="Calibri",
-                            size=17,
-                        )
-                    }
-                ],
-                direction="vertical",
-            )
-            tmp_data = {}
-            for item in table_data:
-                tmp_data.setdefault(item["fuzzer"], {}).setdefault(item["repeat"], {})
-                if "bug_field" not in item:
-                    continue
-                tmp_data[item["fuzzer"]][item["repeat"]][item["bug_field"]] = (
-                    item["time"] + " / " + item["execs"]
-                )
-            table_data = [
-                {"fuzzer": fuzzer, "repeat": repeat, **tmp_data[fuzzer][repeat]}
-                for fuzzer in tmp_data
-                for repeat in tmp_data[fuzzer]
-            ]
-            table_data = sorted(
-                table_data,
-                key=lambda x: (
-                    len(x) - 2,  # order by the number of bugs
-                    x["fuzzer"],
-                    x["repeat"],
-                ),
-                reverse=True,
-            )
-            # the rows of table
-            for item in table_data:
-                excel_manager.set_sheet_data(
-                    [
-                        item[display_field] if display_field in item.keys() else ""
-                        for display_field in display_fields
-                    ]
-                    + [len(item) - 2],
-                    [
-                        {
-                            "Fill": PatternFill(
-                                fgColor=CasrTriageAnalysis.fuzzer_colors[
-                                    item["fuzzer"]
-                                ],
-                                fill_type="solid",
-                            )
-                        }
-                        if item["fuzzer"] in CasrTriageAnalysis.fuzzer_colors.keys()
-                        else {}
-                        for _ in display_fields
-                    ]
-                    + [{}],
-                    direction="vertical",
-                )
-        excel_manager.save_workbook(OUTPUT_FILE)
-        utility.console.print(f"Bug found by time are saved in {OUTPUT_FILE}")
         return OUTPUT_FILE

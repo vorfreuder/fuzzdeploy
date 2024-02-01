@@ -1,7 +1,7 @@
 import os
 import sys
 
-from fuzzdeploy import CasrTriageAnalysis
+from fuzzdeploy import BugFoundByTimeAnalysis
 
 WORK_DIR = (
     sys.argv[1]
@@ -12,8 +12,8 @@ OUTPUT_FILE = (
     sys.argv[2]
     if len(sys.argv) > 2
     else os.path.join(
-        os.path.dirname(WORK_DIR),
+        WORK_DIR,
         f"{os.path.basename(WORK_DIR)}_bug_found_by_time.xlsx",
     )
 )
-CasrTriageAnalysis.save_bug_found_by_speed(WORK_DIR=WORK_DIR, OUTPUT_FILE=OUTPUT_FILE)
+BugFoundByTimeAnalysis.save(WORK_DIR=WORK_DIR, OUTPUT_FILE=OUTPUT_FILE)
