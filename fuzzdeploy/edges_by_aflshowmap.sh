@@ -5,4 +5,4 @@ if [ ! -f "target_args" ]; then
     exit 1
 fi
 rm -rf $AFLSHOWMAP/*
-$FUZZER/repo/afl-showmap -i $(find $SHARED -name "queue") -o /dev/null -C -- $OUT/$(cat target_args) >$AFLSHOWMAP/afl-showmap.log
+$FUZZER/repo/afl-showmap -i $(find $SHARED -name "queue") -o $AFLSHOWMAP -- $OUT/$(cat target_args)

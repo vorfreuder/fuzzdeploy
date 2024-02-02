@@ -1,42 +1,82 @@
+import csv
 import os
-import re
-import shutil
-import time
-
-from openpyxl.styles import Font, PatternFill
 
 from . import utility
 from .Builder import Builder
+from .constants import *
 from .CPUAllocator import CPUAllocator
-from .ExcelManager import ExcelManager
 
 
 class EdgeAnalysis:
     @staticmethod
-    def edges_by_aflshowmap(WORK_DIR, FUZZER):
+    def get_csv_data(file_path):
+        queue_to_time = {}
+        last_index = 0
+        base_time = None
+        with open(
+            file_path,
+            newline="",
+        ) as csvfile:
+            csv_reader = csv.DictReader(csvfile)
+            for row in csv_reader:
+                relative_time = None
+                queue_index = None
+                for key, val in row.items():
+                    if "unix_time" in key or "relative_time" in key:
+                        relative_time = int(val)
+                        if "unix_time" in key:
+                            if not base_time:
+                                base_time = relative_time
+                                relative_time = 0
+                            else:
+                                relative_time -= base_time
+                    if "paths_total" in key or "corpus_count" in key:
+                        queue_index = int(val)
+                assert (
+                    relative_time is not None and queue_index is not None
+                ), "invalid row"
+                if queue_index > last_index:
+                    last_index = queue_index
+                    queue_to_time[queue_index] = relative_time
+        return queue_to_time
+
+    @staticmethod
+    def obtain(WORK_DIR, FUZZER, TIME_RANGE, INTERVAL):
         assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
+        TIME_RANGE = int(TIME_RANGE)
+        INTERVAL = int(INTERVAL)
         WORK_DIR_AFLSHOWMAP = os.path.join(WORK_DIR, "aflshowmap")
         # check if images exist
         TARGETS = set()
-        for test_path in utility.get_workdir_paths(WORK_DIR):
+        for ar_path in utility.get_workdir_paths(WORK_DIR):
             assert os.path.exists(
-                os.path.join(test_path, "target_args")
-            ), f"target_args not found in {test_path}"
-            fuzzer, target, repeat = utility.parse_path_by(test_path)
+                os.path.join(ar_path, "target_args")
+            ), f"target_args not found in {ar_path}"
+            fuzzer, target, repeat = utility.parse_path_by(ar_path)
             TARGETS.add(target)
         Builder.build_imgs(FUZZERS=[FUZZER], TARGETS=list(TARGETS))
         cpu_allocator = CPUAllocator()
-        for test_path in utility.get_workdir_paths(WORK_DIR):
-            fuzzer, target, repeat = utility.parse_path_by(test_path)
+        for ar_path in utility.get_workdir_paths(WORK_DIR):
+            fuzzer, target, repeat = utility.parse_path_by(ar_path)
             edges_path = os.path.join(WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat)
             os.makedirs(edges_path, exist_ok=True)
+            queue_path = utility.search_folder(ar_path, "queue")
+            assert queue_path, f"IMPOSSIBLE! queue not found in {ar_path}"
+            if len(os.listdir(edges_path)) == sum(
+                [
+                    1
+                    for _ in os.listdir(queue_path)
+                    if os.path.isfile(os.path.join(queue_path, _))
+                ]
+            ):
+                continue
             cpu_id = cpu_allocator.get_free_cpu()
             container_id = utility.get_cmd_res(
                 f"""
             docker run \
             -itd \
             --rm \
-            --volume={test_path}:/shared \
+            --volume={ar_path}:/shared \
             --volume={edges_path}:/aflshowmap \
             --cap-add=SYS_PTRACE \
             --security-opt seccomp=unconfined \
@@ -48,17 +88,50 @@ class EdgeAnalysis:
             ).strip()
             cpu_allocator.append(container_id, cpu_id)
         cpu_allocator.wait_for_done()
-        for test_path in utility.get_workdir_paths(WORK_DIR):
-            fuzzer, target, repeat = utility.parse_path_by(test_path)
-            aflshowmap_log_path = os.path.join(
-                WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, "afl-showmap.log"
+        edge_info = []
+        for ar_path in utility.get_workdir_paths(WORK_DIR):
+            fuzzer, target, repeat = utility.parse_path_by(ar_path)
+            plot_data_path = utility.search_file(ar_path, PLOT_DATA)
+            assert plot_data_path, f"{plot_data_path} not exists"
+            queue_to_time = EdgeAnalysis.get_csv_data(plot_data_path)
+            edge_over_time = {}
+            unique_edges = set()
+            for i in range(0, TIME_RANGE + INTERVAL, INTERVAL):
+                edge_over_time[i] = 0
+            for edge_file in sorted(
+                os.listdir(os.path.join(WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat))
+            ):
+                if not edge_file.startswith("id:"):
+                    continue
+                edge_file_path = os.path.join(
+                    WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, edge_file
+                )
+                with open(edge_file_path, "r") as file:
+                    for line in file:
+                        unique_edges.add(line.split(":")[0].strip())
+                id = int(edge_file.split(",")[0].lstrip("id:"))
+                id += 1
+                while id not in queue_to_time:
+                    id += 1
+                for i in range(INTERVAL, TIME_RANGE + INTERVAL, INTERVAL):
+                    if i >= queue_to_time[id]:
+                        edge_over_time[i] = len(unique_edges)
+                        break
+            edge_info.append(
+                {
+                    "fuzzer": fuzzer,
+                    "target": target,
+                    "repeat": repeat,
+                    "edge_over_time": edge_over_time,
+                }
             )
-            assert os.path.exists(
-                aflshowmap_log_path
-            ), f"{aflshowmap_log_path} not exists"
-            aflshowmap_log = open(aflshowmap_log_path, "r").read()
-            for line in aflshowmap_log.split("\n"):
-                if "edges" in line:
-                    line = re.findall(r"\d+ edges", line)[0]
-                    print(f"{fuzzer} {target} {repeat} {line}")
-                    break
+            print(
+                {
+                    "fuzzer": fuzzer,
+                    "target": target,
+                    "repeat": repeat,
+                    "edge_over_time": edge_over_time,
+                }
+            )
+            print()
+        return edge_info

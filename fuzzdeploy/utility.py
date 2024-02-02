@@ -119,6 +119,13 @@ def search_file(dir, file_name):
     return None
 
 
+def search_folder(dir, folder_name):
+    for root, dirs, files in os.walk(dir):
+        if folder_name in dirs:
+            return os.path.join(root, folder_name)
+    return None
+
+
 def get_readable_time(seconds):
     days = seconds // (24 * 60 * 60)
     seconds %= 24 * 60 * 60

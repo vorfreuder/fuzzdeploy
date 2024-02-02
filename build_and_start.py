@@ -84,4 +84,3 @@ Deployer.start_fuzzing(
     REPEAT=REPEAT,
     CPU_RANGE=CPU_RANGE,
 )
-

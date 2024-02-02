@@ -11,17 +11,13 @@ WORK_DIR = (
 STATS_FILE = (
     sys.argv[2]
     if len(sys.argv) > 2
-    else os.path.join(
-       WORK_DIR, f"{os.path.basename(WORK_DIR)}_fuzzer_stats.xlsx"
-    )
+    else os.path.join(WORK_DIR, f"{os.path.basename(WORK_DIR)}_fuzzer_stats.xlsx")
 )
 # StateAnalysis.save(WORK_DIR=WORK_DIR, OUTPUT_FILE=STATS_FILE)
 TRIAGE_FILE = (
     sys.argv[3]
     if len(sys.argv) > 3
-    else os.path.join(
-        WORK_DIR, f"{os.path.basename(WORK_DIR)}_triage_by_casr.xlsx"
-    )
+    else os.path.join(WORK_DIR, f"{os.path.basename(WORK_DIR)}_triage_by_casr.xlsx")
 )
 # CasrTriageAnalysis.save(
 #     WORK_DIR=WORK_DIR, OUTPUT_FILE=TRIAGE_FILE
@@ -30,9 +26,7 @@ TRIAGE_FILE = (
 OUTPUT_FILE = (
     sys.argv[4]
     if len(sys.argv) > 4
-    else os.path.join(
-        WORK_DIR, f"{os.path.basename(WORK_DIR)}_joint.xlsx"
-    )
+    else os.path.join(WORK_DIR, f"{os.path.basename(WORK_DIR)}_joint.xlsx")
 )
 JointAnalysis.save_joint_results(
     STATS_FILE=STATS_FILE, TRIAGE_FILE=TRIAGE_FILE, OUTPUT_FILE=OUTPUT_FILE
