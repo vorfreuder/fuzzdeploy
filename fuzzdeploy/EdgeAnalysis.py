@@ -1,4 +1,5 @@
 import csv
+import json
 import os
 
 from . import utility
@@ -88,9 +89,21 @@ class EdgeAnalysis:
             ).strip()
             cpu_allocator.append(container_id, cpu_id)
         cpu_allocator.wait_for_done()
-        edge_info = []
+        edge_over_time_info = {}
+        # edge_over_time_path = os.path.join(WORK_DIR_AFLSHOWMAP, "edge_over_time.log")
+        # if os.path.exists(edge_over_time_path):
+        #     with open(edge_over_time_path, "r", encoding="utf-8") as f:
+        #         edge_over_time_info = json.load(f)
         for ar_path in utility.get_workdir_paths(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(ar_path)
+            edge_over_time_info.setdefault(target, [])
+            # is_done = False
+            # for item in edge_over_time_info[target]:
+            #     if item["fuzzer"] == fuzzer and item["repeat"] == repeat:
+            #         is_done = True
+            #         break
+            # if is_done:
+            #     continue
             plot_data_path = utility.search_file(ar_path, PLOT_DATA)
             assert plot_data_path, f"{plot_data_path} not exists"
             queue_to_time = EdgeAnalysis.get_csv_data(plot_data_path)
@@ -103,35 +116,37 @@ class EdgeAnalysis:
             ):
                 if not edge_file.startswith("id:"):
                     continue
-                edge_file_path = os.path.join(
-                    WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, edge_file
-                )
-                with open(edge_file_path, "r") as file:
-                    for line in file:
-                        unique_edges.add(line.split(":")[0].strip())
                 id = int(edge_file.split(",")[0].lstrip("id:"))
                 id += 1
-                while id not in queue_to_time:
+                while id not in queue_to_time and id < max(queue_to_time.keys()):
                     id += 1
+                if id not in queue_to_time:
+                    continue
+                with open(
+                    os.path.join(
+                        WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, edge_file
+                    ),
+                    "r",
+                ) as file:
+                    for line in file:
+                        unique_edges.add(line.split(":")[0].strip())
                 for i in range(INTERVAL, TIME_RANGE + INTERVAL, INTERVAL):
                     if i >= queue_to_time[id]:
                         edge_over_time[i] = len(unique_edges)
-                        break
-            edge_info.append(
+            edge_over_time_info[target].append(
                 {
                     "fuzzer": fuzzer,
-                    "target": target,
                     "repeat": repeat,
                     "edge_over_time": edge_over_time,
                 }
             )
-            print(
-                {
-                    "fuzzer": fuzzer,
-                    "target": target,
-                    "repeat": repeat,
-                    "edge_over_time": edge_over_time,
-                }
-            )
-            print()
-        return edge_info
+            # print(
+            #     {
+            #         "fuzzer": fuzzer,
+            #         "repeat": repeat,
+            #         "edge_over_time": edge_over_time,
+            #     }
+            # )
+            # with open(edge_over_time_path, "w", encoding="utf-8") as f:
+            #     json.dump(edge_over_time_info, f, ensure_ascii=False, indent=4)
+        return edge_over_time_info

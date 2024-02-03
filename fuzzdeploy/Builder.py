@@ -8,7 +8,7 @@ class Builder:
     @staticmethod
     def get_imgs():
         assert (
-            utility.get_cmd_res("which docker 2>/dev/null") != None
+            utility.get_cmd_res("which docker && docker images 2>/dev/null") != None
         ), "Is docker running properly?"
         images = utility.get_cmd_res('docker images --format "{{.Repository}}"')
         images = [line for line in images.split("\n") if not line.startswith("<none>")]
