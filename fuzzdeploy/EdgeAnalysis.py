@@ -90,20 +90,20 @@ class EdgeAnalysis:
             cpu_allocator.append(container_id, cpu_id)
         cpu_allocator.wait_for_done()
         edge_over_time_info = {}
-        # edge_over_time_path = os.path.join(WORK_DIR_AFLSHOWMAP, "edge_over_time.log")
-        # if os.path.exists(edge_over_time_path):
-        #     with open(edge_over_time_path, "r", encoding="utf-8") as f:
-        #         edge_over_time_info = json.load(f)
+        edge_over_time_path = os.path.join(WORK_DIR_AFLSHOWMAP, "edge_over_time.log")
+        if os.path.exists(edge_over_time_path):
+            with open(edge_over_time_path, "r", encoding="utf-8") as f:
+                edge_over_time_info = json.load(f)
         for ar_path in utility.get_workdir_paths(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(ar_path)
             edge_over_time_info.setdefault(target, [])
-            # is_done = False
-            # for item in edge_over_time_info[target]:
-            #     if item["fuzzer"] == fuzzer and item["repeat"] == repeat:
-            #         is_done = True
-            #         break
-            # if is_done:
-            #     continue
+            is_done = False
+            for item in edge_over_time_info[target]:
+                if item["fuzzer"] == fuzzer and item["repeat"] == repeat:
+                    is_done = True
+                    break
+            if is_done:
+                continue
             plot_data_path = utility.search_file(ar_path, PLOT_DATA)
             assert plot_data_path, f"{plot_data_path} not exists"
             queue_to_time = EdgeAnalysis.get_csv_data(plot_data_path)
@@ -141,12 +141,14 @@ class EdgeAnalysis:
                 }
             )
             # print(
+            #     target,
             #     {
             #         "fuzzer": fuzzer,
             #         "repeat": repeat,
             #         "edge_over_time": edge_over_time,
-            #     }
+            #     },
             # )
-            # with open(edge_over_time_path, "w", encoding="utf-8") as f:
-            #     json.dump(edge_over_time_info, f, ensure_ascii=False, indent=4)
+            # print()
+            with open(edge_over_time_path, "w", encoding="utf-8") as f:
+                json.dump(edge_over_time_info, f, ensure_ascii=False, indent=4)
         return edge_over_time_info

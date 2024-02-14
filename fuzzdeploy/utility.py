@@ -160,3 +160,20 @@ def human_readable_to_timedelta(human_readable_time):
             total_seconds += value
 
     return timedelta(seconds=total_seconds)
+
+
+def get_workdir_paths_by(work_dir, suffix="ar"):
+    suffix_path = os.path.join(work_dir, suffix)
+    for fuzzer in os.listdir(suffix_path):
+        fuzzer_path = os.path.join(suffix_path, fuzzer)
+        if not os.path.isdir(fuzzer_path):
+            continue
+        for target in os.listdir(fuzzer_path):
+            target_path = os.path.join(fuzzer_path, target)
+            if not os.path.isdir(target_path):
+                continue
+            for repeat in os.listdir(target_path):
+                repeat_path = os.path.join(target_path, repeat)
+                if not os.path.isdir(repeat_path):
+                    continue
+                yield fuzzer, target, repeat, repeat_path

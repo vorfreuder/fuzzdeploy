@@ -60,8 +60,9 @@ class BugFoundByTimeAnalysis:
             os.path.join(WORK_DIR, TRIAGE_BY_CASR)
         ), "Please make crash triage first"
         bug_info = {}
-        for ar_path in utility.get_workdir_paths(WORK_DIR):
-            fuzzer, target, repeat = utility.parse_path_by(ar_path)
+        for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(
+            WORK_DIR, "ar"
+        ):
             bug_info.setdefault(target, [])
             plot_data_path = utility.search_file(ar_path, PLOT_DATA)
             assert plot_data_path, f"{plot_data_path} not exists"
@@ -195,14 +196,18 @@ class BugFoundByTimeAnalysis:
                     ]
                     + [len(item) - 2],
                     [
-                        {
-                            "Fill": PatternFill(
-                                fgColor=CasrTriageAnalysis.fuzzer_colors[item[FUZZER]],
-                                fill_type="solid",
-                            )
-                        }
-                        if item[FUZZER] in CasrTriageAnalysis.fuzzer_colors.keys()
-                        else {}
+                        (
+                            {
+                                "Fill": PatternFill(
+                                    fgColor=CasrTriageAnalysis.fuzzer_colors[
+                                        item[FUZZER]
+                                    ],
+                                    fill_type="solid",
+                                )
+                            }
+                            if item[FUZZER] in CasrTriageAnalysis.fuzzer_colors.keys()
+                            else {}
+                        )
                         for _ in display_fields
                     ]
                     + [{}],
