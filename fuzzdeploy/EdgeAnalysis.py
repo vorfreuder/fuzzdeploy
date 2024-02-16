@@ -127,9 +127,9 @@ class EdgeAnalysis:
                     ) as file:
                         for line in file:
                             unique_edges.add(line.split(":")[0].strip())
-                    edges_over_seeds[int(edge_file.split(",")[0].lstrip("id:"))] = len(
-                        unique_edges
-                    )
+                    edges_over_seeds[
+                        int(edge_file.split(",")[0].lstrip("id:")) + 1
+                    ] = len(unique_edges)
                 with open(edges_over_seeds_path, "w", encoding="utf-8") as f:
                     json.dump(edges_over_seeds, f, ensure_ascii=False, indent=4)
             plot_data_path = utility.search_file(ar_path, PLOT_DATA)
@@ -138,14 +138,6 @@ class EdgeAnalysis:
             edge_over_time = {}
             for i in range(0, TIME_RANGE + INTERVAL, INTERVAL):
                 edge_over_time[i] = 0
-            # for id in sorted(edges_over_seeds.keys()):
-            #     while id not in queue_to_time and id < max(queue_to_time.keys()):
-            #         id += 1
-            #     if id not in queue_to_time:
-            #         continue
-            #     for i in range(INTERVAL, TIME_RANGE + INTERVAL, INTERVAL):
-            #         if i >= queue_to_time[id]:
-            #             edge_over_time[i] = edges_over_seeds[id]
             id_ls = sorted(queue_to_time.keys())
             id_index = 0
             if queue_to_time[id_ls[id_index]] <= TIME_RANGE:
@@ -172,4 +164,8 @@ class EdgeAnalysis:
             #     },
             # )
             # print()
+
+            # print(
+            #     f"{fuzzer}/{target}/{repeat} {TIME_RANGE} {edge_over_time[TIME_RANGE]}"
+            # )
         return edge_over_time_info
