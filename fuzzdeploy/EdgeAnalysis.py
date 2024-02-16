@@ -138,14 +138,24 @@ class EdgeAnalysis:
             edge_over_time = {}
             for i in range(0, TIME_RANGE + INTERVAL, INTERVAL):
                 edge_over_time[i] = 0
-            for id in sorted(edges_over_seeds.keys()):
-                while id not in queue_to_time and id < max(queue_to_time.keys()):
-                    id += 1
-                if id not in queue_to_time:
-                    continue
+            # for id in sorted(edges_over_seeds.keys()):
+            #     while id not in queue_to_time and id < max(queue_to_time.keys()):
+            #         id += 1
+            #     if id not in queue_to_time:
+            #         continue
+            #     for i in range(INTERVAL, TIME_RANGE + INTERVAL, INTERVAL):
+            #         if i >= queue_to_time[id]:
+            #             edge_over_time[i] = edges_over_seeds[id]
+            id_ls = sorted(queue_to_time.keys())
+            id_index = 0
+            if queue_to_time[id_ls[id_index]] <= TIME_RANGE:
                 for i in range(INTERVAL, TIME_RANGE + INTERVAL, INTERVAL):
-                    if i >= queue_to_time[id]:
-                        edge_over_time[i] = edges_over_seeds[id]
+                    while (
+                        id_index + 1 < len(id_ls)
+                        and i >= queue_to_time[id_ls[id_index + 1]]
+                    ):
+                        id_index += 1
+                    edge_over_time[i] = edges_over_seeds[id_ls[id_index]]
             edge_over_time_info[target].append(
                 {
                     "fuzzer": fuzzer,
