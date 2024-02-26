@@ -59,7 +59,7 @@ class EdgeAnalysis:
         cpu_allocator = CPUAllocator()
         for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(WORK_DIR):
             edges_path = os.path.join(
-                WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, "edges"
+                WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, FUZZER, "edges"
             )
             queue_path = utility.search_folder(ar_path, "queue")
             assert queue_path, f"IMPOSSIBLE! queue folder not found in {ar_path}"
@@ -74,7 +74,12 @@ class EdgeAnalysis:
                 continue
             else:
                 edges_over_seeds_path = os.path.join(
-                    WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, "edges_over_seeds.log"
+                    WORK_DIR_AFLSHOWMAP,
+                    fuzzer,
+                    target,
+                    repeat,
+                    FUZZER,
+                    "edges_over_seeds.log",
                 )
                 if os.path.exists(edges_over_seeds_path):
                     os.remove(edges_over_seeds_path)
@@ -101,10 +106,15 @@ class EdgeAnalysis:
         for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(WORK_DIR):
             edge_over_time_info.setdefault(target, [])
             edges_path = os.path.join(
-                WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, "edges"
+                WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, FUZZER, "edges"
             )
             edges_over_seeds_path = os.path.join(
-                WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, "edges_over_seeds.log"
+                WORK_DIR_AFLSHOWMAP,
+                fuzzer,
+                target,
+                repeat,
+                FUZZER,
+                "edges_over_seeds.log",
             )
             if os.path.exists(edges_over_seeds_path):
                 with open(edges_over_seeds_path, "r", encoding="utf-8") as f:
