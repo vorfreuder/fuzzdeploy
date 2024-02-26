@@ -238,8 +238,8 @@ class BugFoundByTimeAnalysis:
                 sheet = wb[target]
                 header_fields = [
                     cell
-                    for row in sheet.iter_cols(min_col=1, max_col=1, values_only=True)
-                    for cell in row
+                    for col in sheet.iter_cols(min_col=1, max_col=1, values_only=True)
+                    for cell in col
                 ]
                 excel = None
                 # get sheet data
