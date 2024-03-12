@@ -75,23 +75,6 @@ def parse_path_by(path):
     return fuzzer, target, repeat
 
 
-def get_workdir_paths(work_dir, suffix="ar"):
-    ar_path = os.path.join(work_dir, suffix)
-    for fuzzer in os.listdir(ar_path):
-        fuzzer_path = os.path.join(ar_path, fuzzer)
-        if not os.path.isdir(fuzzer_path):
-            continue
-        for target in os.listdir(fuzzer_path):
-            target_path = os.path.join(fuzzer_path, target)
-            if not os.path.isdir(target_path):
-                continue
-            for repeat in os.listdir(target_path):
-                repeat_path = os.path.join(target_path, repeat)
-                if not os.path.isdir(repeat_path):
-                    continue
-                yield repeat_path
-
-
 def summary_paths(work_dir):
     tbc_path = os.path.join(work_dir, "triage_by_casr")
     assert os.path.exists(tbc_path), f"{tbc_path} not exists"
@@ -123,6 +106,15 @@ def search_folder(dir, folder_name):
     for root, dirs, files in os.walk(dir):
         if folder_name in dirs:
             return os.path.join(root, folder_name)
+    return None
+
+
+def search_item(dir, item_type: "FILE | FOLDER", item_name):
+    for root, dirs, files in os.walk(dir):
+        if (item_type == "FILE" and item_name in files) or (
+            item_type == "FOLDER" and item_name in dirs
+        ):
+            return os.path.join(root, item_name)
     return None
 
 
@@ -162,13 +154,19 @@ def human_readable_to_timedelta(human_readable_time):
     return timedelta(seconds=total_seconds)
 
 
-def get_workdir_paths_by(work_dir, suffix="ar"):
+def get_workdir_paths_by(
+    work_dir, suffix="ar", exclude_fuzzers=None, exclude_targets=None
+):
     suffix_path = os.path.join(work_dir, suffix)
     for fuzzer in os.listdir(suffix_path):
+        if exclude_fuzzers and fuzzer in exclude_fuzzers:
+            continue
         fuzzer_path = os.path.join(suffix_path, fuzzer)
         if not os.path.isdir(fuzzer_path):
             continue
         for target in os.listdir(fuzzer_path):
+            if exclude_targets and target in exclude_targets:
+                continue
             target_path = os.path.join(fuzzer_path, target)
             if not os.path.isdir(target_path):
                 continue
@@ -177,3 +175,15 @@ def get_workdir_paths_by(work_dir, suffix="ar"):
                 if not os.path.isdir(repeat_path):
                     continue
                 yield fuzzer, target, repeat, repeat_path
+
+
+def get_mul_workdir_paths_by(
+    work_dirs, suffix="ar", exclude_fuzzers=None, exclude_targets=None
+):
+    if isinstance(work_dirs, str):
+        work_dirs = [work_dirs]
+    for work_dir in work_dirs:
+        fuzzer, target, repeat, repeat_path = get_workdir_paths_by(
+            work_dir, suffix, exclude_fuzzers, exclude_targets
+        )
+        yield fuzzer, target, repeat, repeat_path, work_dir

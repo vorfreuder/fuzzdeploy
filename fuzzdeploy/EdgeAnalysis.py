@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import shutil
 
 from . import utility
 from .Builder import Builder
@@ -49,7 +50,7 @@ class EdgeAnalysis:
         WORK_DIR_AFLSHOWMAP = os.path.join(WORK_DIR, "aflshowmap")
         # check if images exist
         TARGETS = set()
-        for ar_path in utility.get_workdir_paths(WORK_DIR):
+        for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(WORK_DIR):
             assert os.path.exists(
                 os.path.join(ar_path, "target_args")
             ), f"target_args not found in {ar_path}"
@@ -58,29 +59,38 @@ class EdgeAnalysis:
         Builder.build_imgs(FUZZERS=[FUZZER], TARGETS=list(TARGETS))
         cpu_allocator = CPUAllocator()
         for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(WORK_DIR):
-            edges_path = os.path.join(
-                WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, FUZZER, "edges"
+            base_path = os.path.join(
+                WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, FUZZER
             )
-            queue_path = utility.search_folder(ar_path, "queue")
+            edges_path = os.path.join(base_path, "edges")
+            queue_path = utility.search_item(ar_path, "FOLDER", "queue")
             assert queue_path, f"IMPOSSIBLE! queue folder not found in {ar_path}"
             os.makedirs(edges_path, exist_ok=True)
-            if len(os.listdir(edges_path)) == sum(
+            edges_path_files = set(os.listdir(edges_path))
+            queue_path_files = set(
                 [
-                    1
+                    _
                     for _ in os.listdir(queue_path)
-                    if os.path.isfile(os.path.join(queue_path, _))
+                    if _.startswith("id:")
+                    and os.path.isfile(os.path.join(queue_path, _))
                 ]
-            ):
+            )
+            diff_set = edges_path_files.difference(queue_path_files)
+            for _ in diff_set:
+                os.remove(os.path.join(edges_path, _))
+                edges_path_files.remove(_)
+            diff_set = queue_path_files.difference(edges_path_files)
+            edges_over_seeds_path = os.path.join(
+                WORK_DIR_AFLSHOWMAP,
+                fuzzer,
+                target,
+                repeat,
+                FUZZER,
+                "edges_over_seeds.log",
+            )
+            if len(diff_set) == 0 and os.path.exists(edges_over_seeds_path):
                 continue
             else:
-                edges_over_seeds_path = os.path.join(
-                    WORK_DIR_AFLSHOWMAP,
-                    fuzzer,
-                    target,
-                    repeat,
-                    FUZZER,
-                    "edges_over_seeds.log",
-                )
                 if os.path.exists(edges_over_seeds_path):
                     os.remove(edges_over_seeds_path)
             cpu_id = cpu_allocator.get_free_cpu()
@@ -90,13 +100,12 @@ class EdgeAnalysis:
             -itd \
             --rm \
             --volume={ar_path}:/shared \
-            --volume={edges_path}:/aflshowmap \
+            --volume={base_path}:/aflshowmap \
             --cap-add=SYS_PTRACE \
             --security-opt seccomp=unconfined \
-            --cpuset-cpus="{cpu_id}" \
             --network=none \
             "{FUZZER}/{target}" \
-            -c '${{SRC}}/edges_by_aflshowmap.sh'
+            -c '${{SRC}}/edges_by_aflshowmap.py'
                     """
             ).strip()
             cpu_allocator.append(container_id, cpu_id)
@@ -105,9 +114,6 @@ class EdgeAnalysis:
         edge_over_time_info = {}
         for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(WORK_DIR):
             edge_over_time_info.setdefault(target, [])
-            edges_path = os.path.join(
-                WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, FUZZER, "edges"
-            )
             edges_over_seeds_path = os.path.join(
                 WORK_DIR_AFLSHOWMAP,
                 fuzzer,
@@ -116,33 +122,12 @@ class EdgeAnalysis:
                 FUZZER,
                 "edges_over_seeds.log",
             )
-            if os.path.exists(edges_over_seeds_path):
-                with open(edges_over_seeds_path, "r", encoding="utf-8") as f:
-                    loaded_data = json.load(f)
-                    edges_over_seeds = {
-                        int(key): value for key, value in loaded_data.items()
-                    }
-            else:
-                edges_over_seeds = {}
-                unique_edges = set()
-                for edge_file in sorted(os.listdir(edges_path)):
-                    if not edge_file.startswith("id:"):
-                        continue
-                    with open(
-                        os.path.join(
-                            edges_path,
-                            edge_file,
-                        ),
-                        "r",
-                    ) as file:
-                        for line in file:
-                            unique_edges.add(line.split(":")[0].strip())
-                    edges_over_seeds[
-                        int(edge_file.split(",")[0].lstrip("id:")) + 1
-                    ] = len(unique_edges)
-                with open(edges_over_seeds_path, "w", encoding="utf-8") as f:
-                    json.dump(edges_over_seeds, f, ensure_ascii=False, indent=4)
-            plot_data_path = utility.search_file(ar_path, PLOT_DATA)
+            with open(edges_over_seeds_path, "r", encoding="utf-8") as f:
+                loaded_data = json.load(f)
+                edges_over_seeds = {
+                    int(key): value for key, value in loaded_data.items()
+                }
+            plot_data_path = utility.search_item(ar_path, "FILE", PLOT_DATA)
             assert plot_data_path, f"{plot_data_path} not exists"
             queue_to_time = EdgeAnalysis.get_csv_data(plot_data_path)
             edge_over_time = {}
@@ -155,8 +140,11 @@ class EdgeAnalysis:
                     while (
                         id_index + 1 < len(id_ls)
                         and i >= queue_to_time[id_ls[id_index + 1]]
+                        and id_ls[id_index + 1] in edges_over_seeds
                     ):
                         id_index += 1
+                    if id_index == 0 and id_ls[id_index] not in edges_over_seeds:
+                        continue
                     edge_over_time[i] = edges_over_seeds[id_ls[id_index]]
             edge_over_time_info[target].append(
                 {
@@ -165,17 +153,89 @@ class EdgeAnalysis:
                     "edge_over_time": edge_over_time,
                 }
             )
-            # print(
-            #     target,
-            #     {
-            #         "fuzzer": fuzzer,
-            #         "repeat": repeat,
-            #         "edge_over_time": edge_over_time,
-            #     },
-            # )
-            # print()
-
-            # print(
-            #     f"{fuzzer}/{target}/{repeat} {TIME_RANGE} {edge_over_time[TIME_RANGE]}"
-            # )
         return edge_over_time_info
+
+    @staticmethod
+    def summary_compute(WORK_DIR, FUZZER):
+        cpu_allocator = CPUAllocator()
+        for (
+            fuzzer,
+            target,
+            repeat,
+            ar_path,
+            work_dir,
+        ) in utility.get_mul_workdir_paths_by(WORK_DIR):
+            WORK_DIR_AFLSHOWMAP = os.path.join(work_dir, "aflshowmap")
+            base_path = os.path.join(
+                WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, FUZZER
+            )
+            queue_path = utility.search_item(ar_path, "FOLDER", "queue")
+            assert queue_path, f"IMPOSSIBLE! queue folder not found in {ar_path}"
+            os.makedirs(base_path, exist_ok=True)
+            summary_path = os.path.join(
+                WORK_DIR_AFLSHOWMAP,
+                fuzzer,
+                target,
+                repeat,
+                FUZZER,
+                "summary.log",
+            )
+            if os.path.exists(summary_path):
+                continue
+            cpu_id = cpu_allocator.get_free_cpu()
+            container_id = utility.get_cmd_res(
+                f"""
+            docker run \
+            -itd \
+            --rm \
+            --volume={ar_path}:/shared \
+            --volume={base_path}:/aflshowmap \
+            --cap-add=SYS_PTRACE \
+            --security-opt seccomp=unconfined \
+            --network=none \
+            "{FUZZER}/{target}" \
+            -c '${{SRC}}/edges_by_aflshowmap.sh'
+                    """
+            ).strip()
+            cpu_allocator.append(container_id, cpu_id)
+        cpu_allocator.wait_for_done()
+
+    @staticmethod
+    def obtain_summary(
+        WORK_DIR,
+        FUZZER,
+    ):
+        assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
+        WORK_DIR_AFLSHOWMAP = os.path.join(WORK_DIR, "aflshowmap")
+        # check if images exist
+        TARGETS = set()
+        for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(WORK_DIR):
+            assert os.path.exists(
+                os.path.join(ar_path, "target_args")
+            ), f"target_args not found in {ar_path}"
+            TARGETS.add(target)
+        Builder.build_imgs(FUZZERS=[FUZZER], TARGETS=list(TARGETS))
+        # compute data
+        EdgeAnalysis.summary_compute(WORK_DIR, FUZZER)
+
+        summary_info = {}
+        for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(WORK_DIR):
+            summary_info.setdefault(target, [])
+            summary_path = os.path.join(
+                WORK_DIR_AFLSHOWMAP,
+                fuzzer,
+                target,
+                repeat,
+                FUZZER,
+                "summary.log",
+            )
+            with open(summary_path, "r", encoding="utf-8") as f:
+                line_count = sum(1 for line in f)
+            summary_info[target].append(
+                {
+                    "fuzzer": fuzzer,
+                    "repeat": repeat,
+                    "summary": line_count,
+                }
+            )
+        return summary_info

@@ -64,7 +64,7 @@ class BugFoundByTimeAnalysis:
             WORK_DIR, "ar"
         ):
             bug_info.setdefault(target, [])
-            plot_data_path = utility.search_file(ar_path, PLOT_DATA)
+            plot_data_path = utility.search_item(ar_path, "FILE", PLOT_DATA)
             assert plot_data_path, f"{plot_data_path} not exists"
             crash_to_time = BugFoundByTimeAnalysis.get_csv_data(plot_data_path)
             reports_unique_line_path = os.path.join(

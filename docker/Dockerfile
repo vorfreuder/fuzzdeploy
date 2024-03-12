@@ -90,7 +90,9 @@ COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/run.sh ${SRC}/run.sh
 COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/triage_by_casr.sh ${SRC}/triage_by_casr.sh
 COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/line_cov_by_aflcov.sh ${SRC}/line_cov_by_aflcov.sh
 COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/edges_by_aflshowmap.sh ${SRC}/edges_by_aflshowmap.sh
+COPY --chown=hesitater:hesitater ${current_path}/fuzzdeploy/edges_by_aflshowmap.py ${SRC}/edges_by_aflshowmap.py
 RUN chmod +x ${SRC}/*.sh && \
+	chmod +x ${SRC}/*.py && \
 	echo 'alias ls="ls --color=auto"' >> ~/.bashrc
 
 RUN if [ "${build_type}" = "release" ]; then \

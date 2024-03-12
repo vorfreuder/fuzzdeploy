@@ -14,15 +14,17 @@ class Maker:
         WORK_DIR_DST_DIR = os.path.join(WORK_DIR, DST_DIR)
         # check if images exist
         TARGETS = set()
-        for path in utility.get_workdir_paths(WORK_DIR, "ar"):
-            _, target, _ = utility.parse_path_by(path)
+        for fuzzer, target, repeat, path in utility.get_workdir_paths_by(
+            WORK_DIR, "ar"
+        ):
             TARGETS.add(target)
         Builder.build_imgs(FUZZERS=[TOOL], TARGETS=list(TARGETS))
         cpu_allocator = CPUAllocator(CPU_RANGE=CPU_RANGE)
-        for path in utility.get_workdir_paths(WORK_DIR, "ar"):
+        for fuzzer, target, repeat, path in utility.get_workdir_paths_by(
+            WORK_DIR, "ar"
+        ):
             if path in SKIP_PATHS:
                 continue
-            fuzzer, target, repeat = utility.parse_path_by(path)
             dst_path = os.path.join(WORK_DIR_DST_DIR, fuzzer, target, repeat)
             os.makedirs(dst_path, exist_ok=True)
             while True:

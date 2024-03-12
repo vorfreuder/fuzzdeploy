@@ -21,17 +21,18 @@ class CoverageAnalysis:
         WORK_DIR_COV = os.path.join(WORK_DIR, "cov")
         # check if images exist
         TARGETS = set()
-        for test_path in utility.get_workdir_paths(WORK_DIR):
+        for fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(WORK_DIR):
             assert os.path.exists(
                 os.path.join(test_path, "target_args")
             ), f"target_args not found in {test_path}"
-            fuzzer, target, repeat = utility.parse_path_by(test_path)
             TARGETS.add(target)
         Builder.build_imgs(FUZZERS=["aflcov"], TARGETS=list(TARGETS))
         cpu_allocator = CPUAllocator()
-        for test_path in utility.get_workdir_paths(WORK_DIR):
-            fuzzer, target, repeat = utility.parse_path_by(test_path)
+        for fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(WORK_DIR):
             coverage_path = os.path.join(WORK_DIR_COV, fuzzer, target, repeat)
+            coverage_log_path = os.path.join(
+                WORK_DIR_COV, fuzzer, target, repeat, "afl-cov.log"
+            )
             if os.path.exists(coverage_path):
                 shutil.rmtree(coverage_path)
             os.makedirs(coverage_path)
@@ -53,7 +54,8 @@ class CoverageAnalysis:
             ).strip()
             cpu_allocator.append(container_id, cpu_id)
         cpu_allocator.wait_for_done()
-        for test_path in utility.get_workdir_paths(WORK_DIR):
+        res = []
+        for fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(test_path)
             coverage_log_path = os.path.join(
                 WORK_DIR_COV, fuzzer, target, repeat, "afl-cov.log"
@@ -62,6 +64,14 @@ class CoverageAnalysis:
             coverage_log = open(coverage_log_path, "r").read()
             for line in coverage_log.split("\n"):
                 if line.lstrip().startswith("lines"):
-                    info = line.split(":", 1)[1].strip()
-                    print(f"{fuzzer} {target} {repeat} {info}")
+                    info = line.split(":", 1)[1].split("%", 1)[0].strip()
+                    # print(f"{fuzzer} {target} {repeat} {info}")
+                    res.append(
+                        {
+                            "fuzzer": fuzzer,
+                            "target": target,
+                            "linecov": info,
+                        }
+                    )
                     break
+        return res

@@ -31,9 +31,8 @@ class StateAnalysis:
         assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
         no_fuzzer_stats_ls = []
         state_results = {}
-        for test_path in utility.get_workdir_paths(WORK_DIR):
-            fuzzer, target, repeat = utility.parse_path_by(test_path)
-            fuzzer_stats_path = utility.search_file(test_path, FUZZER_STATS)
+        for fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(WORK_DIR):
+            fuzzer_stats_path = utility.search_item(test_path, "FILE", FUZZER_STATS)
             if fuzzer_stats_path is None:
                 no_fuzzer_stats_ls.append(f"{fuzzer}/{target}/{repeat}")
                 continue

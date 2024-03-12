@@ -13,6 +13,7 @@ targets/*/repo
 targets/*/*.tar.xz
 targets/*/*.tar.gz
 targets/*/*.zip
+data
 test
 workdir*
 my*
