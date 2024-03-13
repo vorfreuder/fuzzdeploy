@@ -42,13 +42,14 @@ class Maker:
             docker run \
             -itd \
             --rm \
-            --volume={ar_path}:/shared \
-            --volume={dst_path}:/{SUB} \
             --cap-add=SYS_PTRACE \
             --security-opt seccomp=unconfined \
-            --cpuset-cpus="{cpu_id}" \
-            {" ".join([f"--env={k}={v}" for k, v in ENV.items()])} \
             --network=none \
+            --volume={ar_path}:/shared \
+            --volume={dst_path}:/dst \
+            --env DST=/dst \
+            {" ".join([f"--env {k}={v}" for k, v in ENV.items()])} \
+            --cpuset-cpus="{cpu_id}" \
             "{BASE}/{target}" \
             -c '${{SRC}}/run.sh'
             """

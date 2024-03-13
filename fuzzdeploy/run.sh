@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if [ -n "$DST" ]; then
+    bash $FUZZER/run.sh
+    exit 0
+fi
+
 if [ -z "$CPU_ID" ]; then
     exec bash
 fi
