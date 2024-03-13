@@ -7,23 +7,10 @@ import time
 import psutil
 
 from . import utility
-from .CPUAllocator import CPUAllocator
+from .CpuAllocator import CpuAllocator
 
 
 class Deployer:
-    @staticmethod
-    def cpu_allocate(self):
-        CPU_RANGE = self.CPU_RANGE
-        WORK_DIR_LOCK = self.WORK_DIR_LOCK
-        while True:
-            used_cpu_ls = os.listdir(WORK_DIR_LOCK)
-            for cpu_id in CPU_RANGE:
-                if cpu_id not in used_cpu_ls:
-                    with open(os.path.join(WORK_DIR_LOCK, cpu_id), "x") as file:
-                        pass
-                    return cpu_id
-            time.sleep(5)
-
     @staticmethod
     @utility.time_count("Fuzzing done")
     def start_fuzzing(
@@ -70,7 +57,8 @@ class Deployer:
                     )
                     != None
                 ), utility.console.print(f"docker image {fuzzer}/{target} not found")
-        container_id_dict = {}
+
+        cpu_allocator = CpuAllocator(CPU_RANGE)
 
         def sigint_handler(signal, frame):
             utility.console.print()
@@ -78,7 +66,7 @@ class Deployer:
                 f"[bold green]interrupted by user, docker containers removing...",
                 spinner="arrow3",
             ) as status:
-                for container_id in container_id_dict.keys():
+                for container_id in cpu_allocator.container_id_dict.keys():
                     utility.get_cmd_res(f"docker rm -f {container_id}")
             utility.console.print(
                 f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} interrupted by user, \
@@ -88,8 +76,6 @@ docker containers removed"
             sys.exit()
 
         signal.signal(signal.SIGINT, sigint_handler)
-
-        cpu_allocator = CPUAllocator(CPU_RANGE)
         for index in REPEAT:
             for fuzzer in FUZZERS:
                 for target in TARGETS.keys():

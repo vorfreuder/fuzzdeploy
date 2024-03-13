@@ -7,7 +7,7 @@ from openpyxl.styles import Font, PatternFill
 
 from . import utility
 from .Builder import Builder
-from .CPUAllocator import CPUAllocator
+from .CpuAllocator import CpuAllocator
 from .ExcelManager import ExcelManager
 
 
@@ -27,7 +27,7 @@ class CoverageAnalysis:
             ), f"target_args not found in {test_path}"
             TARGETS.add(target)
         Builder.build_imgs(FUZZERS=["aflcov"], TARGETS=list(TARGETS))
-        cpu_allocator = CPUAllocator()
+        cpu_allocator = CpuAllocator()
         for fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(WORK_DIR):
             coverage_path = os.path.join(WORK_DIR_COV, fuzzer, target, repeat)
             coverage_log_path = os.path.join(

@@ -6,7 +6,7 @@ from openpyxl.styles import Font, PatternFill
 from . import utility
 from .Builder import Builder
 from .constants import *
-from .CPUAllocator import CPUAllocator
+from .CpuAllocator import CpuAllocator
 from .ExcelManager import ExcelManager
 
 
@@ -178,7 +178,7 @@ class CasrTriageAnalysis:
             utility.TimeElapsedColumn(),
             transient=True,
         ) as progress:
-            cpu_allocator = CPUAllocator()
+            cpu_allocator = CpuAllocator()
             last_triaged_crashes_num = 0
 
             def update_progress(progress, last_triaged_crashes_num):

@@ -6,7 +6,7 @@ import shutil
 from . import utility
 from .Builder import Builder
 from .constants import *
-from .CPUAllocator import CPUAllocator
+from .CpuAllocator import CpuAllocator
 
 
 class EdgeAnalysis:
@@ -57,7 +57,7 @@ class EdgeAnalysis:
             fuzzer, target, repeat = utility.parse_path_by(ar_path)
             TARGETS.add(target)
         Builder.build_imgs(FUZZERS=[FUZZER], TARGETS=list(TARGETS))
-        cpu_allocator = CPUAllocator()
+        cpu_allocator = CpuAllocator()
         for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(WORK_DIR):
             base_path = os.path.join(
                 WORK_DIR_AFLSHOWMAP, fuzzer, target, repeat, FUZZER
@@ -157,7 +157,7 @@ class EdgeAnalysis:
 
     @staticmethod
     def summary_compute(WORK_DIR, FUZZER):
-        cpu_allocator = CPUAllocator()
+        cpu_allocator = CpuAllocator()
         for (
             fuzzer,
             target,

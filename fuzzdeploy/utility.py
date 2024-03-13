@@ -183,7 +183,7 @@ def get_mul_workdir_paths_by(
     if isinstance(work_dirs, str):
         work_dirs = [work_dirs]
     for work_dir in work_dirs:
-        fuzzer, target, repeat, repeat_path = get_workdir_paths_by(
+        for fuzzer, target, repeat, repeat_path in get_workdir_paths_by(
             work_dir, suffix, exclude_fuzzers, exclude_targets
-        )
-        yield fuzzer, target, repeat, repeat_path, work_dir
+        ):
+            yield fuzzer, target, repeat, repeat_path, work_dir

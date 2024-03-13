@@ -5,7 +5,7 @@ import psutil
 from . import utility
 
 
-class CPUAllocator:
+class CpuAllocator:
     def __init__(self, CPU_RANGE=None):
         if CPU_RANGE is None:
             CPU_RANGE = [str(i) for i in range(psutil.cpu_count())]
@@ -28,7 +28,7 @@ class CPUAllocator:
 
     def recycle_cpus(self):
         for container_id in list(self.container_id_dict.keys()):
-            if not CPUAllocator.is_container_running(container_id):
+            if not CpuAllocator.is_container_running(container_id):
                 self.free_cpu_ls.extend(self.container_id_dict.pop(container_id))
 
     def get_free_cpu(self, sleep_time=10, time_out=None):
@@ -48,6 +48,12 @@ class CPUAllocator:
     def append(self, container_id, cpu_id):
         self.container_id_dict.setdefault(container_id, []).append(cpu_id)
         return self.container_id_dict[container_id]
+
+    def get_container_id_ls(self):
+        return list(self.container_id_dict.keys())
+
+    def get_cpu_ls_by_container_id(self, container_id):
+        return self.container_id_dict.get(container_id, [])
 
     def has_free_cpu(self):
         return len(self.free_cpu_ls) > 0

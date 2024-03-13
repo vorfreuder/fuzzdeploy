@@ -6,6 +6,7 @@ from .Deployer import Deployer
 from .EdgeAnalysis import EdgeAnalysis
 from .ExcelManager import ExcelManager
 from .JointAnalysis import JointAnalysis
+from .Maker import Maker
 from .StateAnalysis import StateAnalysis
 from .utility import console
 
