@@ -73,7 +73,7 @@ for fuzzer in FUZZERS:
         FUZZERS_ARGS[fuzzer][target] = fuzzerargs.strip()
 
 # build docker images
-Builder.build_imgs(FUZZERS=FUZZERS, TARGETS=TARGETS)
+Builder.build_imgs(FUZZERS=FUZZERS + ["casr"], TARGETS=TARGETS)
 # fuzzing
 Deployer.start_fuzzing(
     WORK_DIR=WORK_DIR,
