@@ -18,12 +18,12 @@ class CoverageAnalysis:
         "Coverage BY AFL-COV@https://github.com/vanhauser-thc/afl-cov DONE!"
     )
     def coverage_by_aflcov(WORK_DIR):
-        thread = Maker.make(
+        maker = Maker(
             WORK_DIR,
             "cov",
             "aflcov",
         )
-        thread.join()
+        maker.thread.join()
         res = []
         for fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(WORK_DIR):
             fuzzer, target, repeat = utility.parse_path_by(test_path)

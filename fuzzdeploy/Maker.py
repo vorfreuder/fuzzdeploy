@@ -9,9 +9,14 @@ from .CpuAllocator import CpuAllocator
 
 
 class Maker:
-    @staticmethod
-    def _make(WORK_DIR, SUB, BASE, IS_SKIP, CPU_RANGE, ENV, MODE):
-        cpu_allocator = CpuAllocator(CPU_RANGE=CPU_RANGE)
+    def _make(self):
+        cpu_allocator = self.cpu_allocator
+        WORK_DIR = self.WORK_DIR
+        SUB = self.SUB
+        BASE = self.BASE
+        IS_SKIP = self.IS_SKIP
+        ENV = self.ENV
+        MODE = self.MODE
         for (
             fuzzer,
             target,
@@ -33,6 +38,7 @@ class Maker:
             --cap-add=SYS_PTRACE \
             --security-opt seccomp=unconfined \
             --network=none \
+            --privileged \
             --volume={ar_path}:/shared \
             --volume={dst_path}:/dst \
             --env DST=/dst \
@@ -61,8 +67,8 @@ class Maker:
                     f"docker update --cpuset-cpus {','.join(allocated_cpu_ls)} {min_container_id} 2>/dev/null"
                 )
 
-    @staticmethod
-    def make(
+    def __init__(
+        self,
         WORK_DIR,
         SUB,
         BASE,
@@ -72,8 +78,8 @@ class Maker:
         MODE: "PER | ALL" = "PER",
     ):
         assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
-        ar_path = os.path.join(WORK_DIR, "ar")
-        assert os.path.exists(ar_path), f"{ar_path} not exists"
+        # ar_path = os.path.join(WORK_DIR, "ar")
+        # assert os.path.exists(ar_path), f"{ar_path} not exists"
         assert SUB is not None, "SUB should not be None"
         assert BASE is not None, "BASE should not be None"
         available_cpu_count = psutil.cpu_count()
@@ -100,10 +106,18 @@ class Maker:
         ) in utility.get_workdir_paths_by(WORK_DIR, "ar"):
             TARGETS.add(target)
         Builder.build_imgs(FUZZERS=[BASE], TARGETS=list(TARGETS))
+        self.WORK_DIR = WORK_DIR
+        self.SUB = SUB
+        self.BASE = BASE
+        self.IS_SKIP = IS_SKIP
+        self.CPU_RANGE = CPU_RANGE
+        self.ENV = ENV
+        self.MODE = MODE
+        self.cpu_allocator = CpuAllocator(CPU_RANGE=CPU_RANGE)
         thread = threading.Thread(
             target=Maker._make,
-            args=(WORK_DIR, SUB, BASE, IS_SKIP, CPU_RANGE, ENV, MODE),
+            args=(self,),
         )
         thread.setDaemon(True)
         thread.start()
-        return thread
+        self.thread = thread

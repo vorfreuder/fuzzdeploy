@@ -170,7 +170,7 @@ class CasrTriageAnalysis:
                 tmp_num -= 1
             total_crash_num += tmp_num
             untriaged_paths.append((fuzzer, target, repeat))
-        thread = Maker.make(
+        maker = Maker(
             WORK_DIR,
             TRIAGE_BY_CASR,
             "casr",
@@ -222,8 +222,8 @@ class CasrTriageAnalysis:
                     advance=triaged_crashes_num - last_triaged_crashes_num,
                 )
                 last_triaged_crashes_num = triaged_crashes_num
-                thread.join(5)
-                if not thread.is_alive():
+                maker.thread.join(5)
+                if not maker.thread.is_alive():
                     break
             progress.update(triage_task, completed=total_crash_num)
             # time.sleep(2)
