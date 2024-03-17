@@ -10,30 +10,18 @@ from .CpuAllocator import CpuAllocator
 
 class Maker:
     @staticmethod
-    def _make(WORK_DIRs, SUB, BASE, IS_SKIP, CPU_RANGE, ENV, MODE):
-        # check if images exist
-        TARGETS = set()
-        for (
-            fuzzer,
-            target,
-            repeat,
-            repeat_path,
-            work_dir,
-        ) in utility.get_mul_workdir_paths_by(WORK_DIRs, "ar"):
-            TARGETS.add(target)
-        Builder.build_imgs(FUZZERS=[BASE], TARGETS=list(TARGETS))
+    def _make(WORK_DIR, SUB, BASE, IS_SKIP, CPU_RANGE, ENV, MODE):
         cpu_allocator = CpuAllocator(CPU_RANGE=CPU_RANGE)
         for (
             fuzzer,
             target,
             repeat,
             repeat_path,
-            work_dir,
-        ) in utility.get_mul_workdir_paths_by(WORK_DIRs, "ar"):
-            if IS_SKIP and IS_SKIP(fuzzer, target, repeat, repeat_path, work_dir):
+        ) in utility.get_workdir_paths_by(WORK_DIR, "ar"):
+            ar_path = os.path.join(WORK_DIR, "ar", fuzzer, target, repeat)
+            dst_path = os.path.join(WORK_DIR, SUB, fuzzer, target, repeat)
+            if IS_SKIP and IS_SKIP(fuzzer, target, repeat, dst_path, WORK_DIR):
                 continue
-            ar_path = os.path.join(work_dir, "ar", fuzzer, target, repeat)
-            dst_path = os.path.join(work_dir, SUB, fuzzer, target, repeat)
             os.makedirs(dst_path, exist_ok=True)
             # wait for a free cpu
             cpu_id = cpu_allocator.get_free_cpu()
@@ -75,7 +63,7 @@ class Maker:
 
     @staticmethod
     def make(
-        WORK_DIRs,
+        WORK_DIR,
         SUB,
         BASE,
         IS_SKIP: "function" = None,
@@ -83,14 +71,10 @@ class Maker:
         ENV={},
         MODE: "PER | ALL" = "PER",
     ):
-        if isinstance(WORK_DIRs, str):
-            WORK_DIRs = [WORK_DIRs]
-        for WORK_DIR in WORK_DIRs:
-            assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
-            ar_path = os.path.join(WORK_DIR, "ar")
-            assert os.path.exists(ar_path), f"{ar_path} not exists"
+        assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
+        ar_path = os.path.join(WORK_DIR, "ar")
+        assert os.path.exists(ar_path), f"{ar_path} not exists"
         assert SUB is not None, "SUB should not be None"
-        SUB = SUB.lower()
         assert BASE is not None, "BASE should not be None"
         available_cpu_count = psutil.cpu_count()
         if CPU_RANGE is None:
@@ -106,9 +90,19 @@ class Maker:
                 min_cpu >= 0 and max_cpu < available_cpu_count
             ), f"available CPU_RANGE: 0-{available_cpu_count-1}"
             CPU_RANGE = [str(i) for i in CPU_RANGE]
+        # check if images exist
+        TARGETS = set()
+        for (
+            fuzzer,
+            target,
+            repeat,
+            repeat_path,
+        ) in utility.get_workdir_paths_by(WORK_DIR, "ar"):
+            TARGETS.add(target)
+        Builder.build_imgs(FUZZERS=[BASE], TARGETS=list(TARGETS))
         thread = threading.Thread(
             target=Maker._make,
-            args=(WORK_DIRs, SUB, BASE, IS_SKIP, CPU_RANGE, ENV, MODE),
+            args=(WORK_DIR, SUB, BASE, IS_SKIP, CPU_RANGE, ENV, MODE),
         )
         thread.setDaemon(True)
         thread.start()

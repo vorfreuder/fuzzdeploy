@@ -5,13 +5,6 @@ import time
 from datetime import timedelta
 
 from rich.console import Console
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
 from rich.traceback import install
 
 install()

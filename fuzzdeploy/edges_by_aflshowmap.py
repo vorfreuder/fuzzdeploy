@@ -20,6 +20,7 @@ OUT = os.environ.get("OUT")
 edges_path = os.path.join(AFLSHOWMAP, "edges")
 
 target_args = OUT + "/" + open(os.path.join(SHARED, "target_args")).readline().strip()
+# may not need?
 if "@@" not in target_args:
     target_args = target_args + " < @@"
 queue_path = None

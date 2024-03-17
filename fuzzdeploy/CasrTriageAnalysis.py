@@ -1,13 +1,22 @@
 import os
 import re
+import time
 
 from openpyxl.styles import Font, PatternFill
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 
 from . import utility
 from .Builder import Builder
 from .constants import *
 from .CpuAllocator import CpuAllocator
 from .ExcelManager import ExcelManager
+from .Maker import Maker
 
 
 class CasrTriageAnalysis:
@@ -117,144 +126,111 @@ class CasrTriageAnalysis:
         )
 
     @staticmethod
+    def is_triaged_by_casr(fuzzer, target, repeat, dst_path, work_dir):
+        if not os.path.exists(dst_path):
+            return False
+        ar_path = os.path.join(work_dir, "ar", fuzzer, target, repeat)
+        crash_path = utility.search_item(ar_path, "FOLDER", "crashes")
+        crash_set = set(os.listdir(crash_path))
+        crash_set.discard("README.txt")
+        if (len(crash_set) == 0) and (
+            not os.path.exists(os.path.join(dst_path, "summary_by_unique_line"))
+        ):
+            return False
+        for folder_name in ["failed", "reports"]:
+            path = os.path.join(dst_path, folder_name)
+            if os.path.exists(path):
+                for file_name in os.listdir(path):
+                    if folder_name == "reports":
+                        if not file_name.endswith(".casrep"):
+                            continue
+                        file_name = file_name.rstrip(".casrep")
+                    if file_name in crash_set:
+                        crash_set.remove(file_name)
+                    else:
+                        os.remove(os.path.join(path, file_name))
+        return len(crash_set) == 0
+
+    @staticmethod
     @utility.time_count("CRASH TRIAGE BY CASR@https://github.com/ispras/casr DONE!")
     def obtain(WORK_DIR):
-        assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
-        WORK_DIR_TRIAGE_BY_CASR = os.path.join(WORK_DIR, TRIAGE_BY_CASR)
-        # check if images exist
-        TARGETS = set()
-        for fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(WORK_DIR):
-            TARGETS.add(target)
-        Builder.build_imgs(FUZZERS=["casr"], TARGETS=list(TARGETS))
-
-        # calculate crashes sum
-        def get_triaged_crashes_num(triaged_path):
-            triaged_num = 0
-            if os.path.exists(os.path.join(triaged_path, "failed")):
-                triaged_num += len(os.listdir(os.path.join(triaged_path, "failed")))
-            if os.path.exists(os.path.join(triaged_path, "reports")):
-                triaged_num += len(os.listdir(os.path.join(triaged_path, "reports")))
-            return triaged_num
-
-        crashes_sum = {}
-        current_crashes_num = {}
+        total_crash_num = 0
         untriaged_paths = []
-        for fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(WORK_DIR):
-            assert os.path.exists(
-                os.path.join(test_path, TARGET_ARGS)
-            ), f"{TARGET_ARGS} not found in {test_path}"
-            fuzzer_stats_path = utility.search_item(test_path, "FILE", FUZZER_STATS)
+        for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(WORK_DIR):
+            fuzzer_stats_path = utility.search_item(ar_path, "FILE", FUZZER_STATS)
             if fuzzer_stats_path is None:
                 utility.console.print(
-                    f"[yellow]Warning: {FUZZER_STATS} not found in {test_path}, maybe fine.[/yellow]"
+                    f"[yellow]Warning: {FUZZER_STATS} not found in {ar_path}, maybe fine.[/yellow]"
                 )
-            triage_by_casr = os.path.join(
-                WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
-            )
-            triaged_num = get_triaged_crashes_num(triage_by_casr)
-            for foldername, subfolders, filenames in os.walk(test_path):
-                if "crashes" in subfolders:
-                    files = os.listdir(os.path.join(foldername, "crashes"))
-                    if "README.txt" in files:
-                        files.remove("README.txt")
-                    crashes_sum[f"{fuzzer}/{target}/{repeat}"] = len(files)
-                    break
-            if f"{fuzzer}/{target}/{repeat}" not in crashes_sum:
-                continue
-            if triaged_num != crashes_sum[f"{fuzzer}/{target}/{repeat}"]:
-                untriaged_paths.append(test_path)
-            elif triaged_num == 0 and (
-                not os.path.exists(
-                    os.path.join(triage_by_casr, "summary_by_unique_line")
-                )
-            ):
-                untriaged_paths.append(test_path)
-
-        with utility.Progress(
-            utility.SpinnerColumn(spinner_name="arrow3"),
-            utility.TextColumn("[progress.description]{task.description}"),
-            utility.BarColumn(),
-            utility.TextColumn("[bold]{task.completed} / {task.total}"),
-            utility.TimeElapsedColumn(),
+            crash_path = utility.search_item(ar_path, "FOLDER", "crashes")
+            assert crash_path is not None, f"crashes not found in {ar_path}"
+            crash_ls = os.listdir(crash_path)
+            tmp_num = len(crash_ls)
+            if "README.txt" in os.listdir(crash_path):
+                tmp_num -= 1
+            total_crash_num += tmp_num
+            untriaged_paths.append((fuzzer, target, repeat))
+        thread = Maker.make(
+            WORK_DIR,
+            TRIAGE_BY_CASR,
+            "casr",
+            IS_SKIP=CasrTriageAnalysis.is_triaged_by_casr,
+            MODE="ALL",
+        )
+        with Progress(
+            SpinnerColumn(spinner_name="arrow3"),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[bold]{task.completed} / {task.total}"),
+            TimeElapsedColumn(),
             transient=True,
         ) as progress:
-            cpu_allocator = CpuAllocator()
+            triage_task = progress.add_task(
+                "[bold green]Triaging", total=total_crash_num
+            )
             last_triaged_crashes_num = 0
-
-            def update_progress(progress, last_triaged_crashes_num):
-                for test_path in untriaged_paths:
-                    fuzzer, target, repeat = utility.parse_path_by(test_path)
-                    triage_by_casr = os.path.join(
-                        WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
+            while True:
+                triaged_paths = []
+                triaged_crashes_num = 0
+                for fuzzer, target, repeat in untriaged_paths:
+                    ar_path = os.path.join(WORK_DIR, "ar", fuzzer, target, repeat)
+                    triaged_path = os.path.join(
+                        WORK_DIR, TRIAGE_BY_CASR, fuzzer, target, repeat
                     )
-                    if crashes_sum[
-                        f"{fuzzer}/{target}/{repeat}"
-                    ] == current_crashes_num.get(f"{fuzzer}/{target}/{repeat}", 0):
+                    if not os.path.exists(triaged_path):
                         continue
-                    current_crashes_num[
-                        f"{fuzzer}/{target}/{repeat}"
-                    ] = get_triaged_crashes_num(triage_by_casr)
-                triaged_crashes_num = sum(current_crashes_num.values())
+                    crash_path = utility.search_item(ar_path, "FOLDER", "crashes")
+                    crash_set = set(os.listdir(crash_path))
+                    crash_set.discard("README.txt")
+                    triaged_crashes_num += len(crash_set)
+                    for folder_name in ["failed", "reports"]:
+                        path = os.path.join(triaged_path, folder_name)
+                        if os.path.exists(path):
+                            for file_name in os.listdir(path):
+                                if folder_name == "reports":
+                                    if not file_name.endswith(".casrep"):
+                                        continue
+                                    file_name = file_name.rstrip(".casrep")
+                                if file_name in crash_set:
+                                    crash_set.remove(file_name)
+                    if len(crash_set) == 0:
+                        triaged_paths.append(triaged_path)
+                    triaged_crashes_num -= len(crash_set)
+                untriaged_paths = list(set(untriaged_paths) - set(triaged_paths))
                 progress.update(
                     triage_task,
                     advance=triaged_crashes_num - last_triaged_crashes_num,
                 )
-                return triaged_crashes_num
-
-            triage_task = progress.add_task(
-                "[bold green]Triaging", total=sum(crashes_sum.values())
-            )
-            for test_path in untriaged_paths:
-                fuzzer, target, repeat = utility.parse_path_by(test_path)
-                triage_by_casr = os.path.join(
-                    WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
-                )
-                os.makedirs(triage_by_casr, exist_ok=True)
-                while True:
-                    cpu_id = cpu_allocator.get_free_cpu(sleep_time=1, time_out=10)
-                    last_triaged_crashes_num = update_progress(
-                        progress, last_triaged_crashes_num
-                    )
-                    if cpu_id is not None:
-                        break
-                container_id = utility.get_cmd_res(
-                    f"""
-            docker run \
-            -itd \
-            --rm \
-            --volume={test_path}:/shared \
-            --volume={triage_by_casr}:/triage_by_casr \
-            --cap-add=SYS_PTRACE \
-            --security-opt seccomp=unconfined \
-            --cpuset-cpus="{cpu_id}" \
-            --network=none \
-            "casr/{target}" \
-            -c '${{SRC}}/triage_by_casr.sh'
-                    """
-                ).strip()
-                cpu_allocator.append(container_id, cpu_id)
-            while len(cpu_allocator.container_id_dict) > 0:
-                last_triaged_crashes_num = update_progress(
-                    progress, last_triaged_crashes_num
-                )
-                cpu_id = cpu_allocator.get_free_cpu(sleep_time=5, time_out=10)
-                if cpu_id is None:
-                    continue
-                container_id_dict = cpu_allocator.container_id_dict
-                if len(container_id_dict) == 0:
+                last_triaged_crashes_num = triaged_crashes_num
+                thread.join(5)
+                if not thread.is_alive():
                     break
-                min_container_id = min(
-                    container_id_dict, key=lambda k: len(container_id_dict[k])
-                )
-                allocated_cpu_ls = cpu_allocator.append(min_container_id, cpu_id)
-                utility.get_cmd_res(
-                    f"docker update --cpuset-cpus {','.join(allocated_cpu_ls)} {min_container_id} 2>/dev/null"
-                )
+            progress.update(triage_task, completed=total_crash_num)
+            # time.sleep(2)
         triage_results = {}
-        for fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(WORK_DIR):
-            triage_by_casr = os.path.join(
-                WORK_DIR_TRIAGE_BY_CASR, fuzzer, target, repeat
-            )
+        for fuzzer, target, repeat, triaged_path in utility.get_workdir_paths_by(
+            WORK_DIR, TRIAGE_BY_CASR
+        ):
             triage = {
                 FUZZER: fuzzer,
                 REPEAT: repeat,
@@ -262,16 +238,16 @@ class CasrTriageAnalysis:
                 "casr_dedup": 0,
                 "casr_dedup_cluster": 0,
             }
-            if os.path.exists(os.path.join(triage_by_casr, "reports_dedup")):
+            if os.path.exists(os.path.join(triaged_path, "reports_dedup")):
                 triage["casr_dedup"] = len(
-                    os.listdir(os.path.join(triage_by_casr, "reports_dedup"))
+                    os.listdir(os.path.join(triaged_path, "reports_dedup"))
                 )
-            if os.path.exists(os.path.join(triage_by_casr, "reports_dedup_cluster")):
+            if os.path.exists(os.path.join(triaged_path, "reports_dedup_cluster")):
                 triage["casr_dedup_cluster"] = len(
-                    os.listdir(os.path.join(triage_by_casr, "reports_dedup_cluster"))
+                    os.listdir(os.path.join(triaged_path, "reports_dedup_cluster"))
                 )
             summary_by_unique_line_path = os.path.join(
-                triage_by_casr, "summary_by_unique_line"
+                triaged_path, "summary_by_unique_line"
             )
             if os.path.isfile(summary_by_unique_line_path):
                 with open(summary_by_unique_line_path) as f:
@@ -295,7 +271,9 @@ class CasrTriageAnalysis:
                 ),
                 reverse=True,
             )
-        utility.console.print(f"The results can be found in {WORK_DIR_TRIAGE_BY_CASR}")
+        utility.console.print(
+            f"The results can be found in {os.path.join(WORK_DIR, TRIAGE_BY_CASR)}"
+        )
         return triage_results
 
     @staticmethod
@@ -377,14 +355,18 @@ class CasrTriageAnalysis:
                         for display_field in display_fields
                     ],
                     [
-                        {
-                            "Fill": PatternFill(
-                                fgColor=CasrTriageAnalysis.fuzzer_colors[item[FUZZER]],
-                                fill_type="solid",
-                            )
-                        }
-                        if item[FUZZER] in CasrTriageAnalysis.fuzzer_colors.keys()
-                        else {}
+                        (
+                            {
+                                "Fill": PatternFill(
+                                    fgColor=CasrTriageAnalysis.fuzzer_colors[
+                                        item[FUZZER]
+                                    ],
+                                    fill_type="solid",
+                                )
+                            }
+                            if item[FUZZER] in CasrTriageAnalysis.fuzzer_colors.keys()
+                            else {}
+                        )
                         for _ in display_fields
                     ],
                 )

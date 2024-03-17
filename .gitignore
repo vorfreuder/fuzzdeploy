@@ -5,6 +5,9 @@ fuzzers/htfuzz
 fuzzers/mopt
 fuzzers/fmix
 fuzzers/udemo
+fuzzers/dynfuzz
+fuzzers/aflgo
+fuzzers/deltafuzz
 fuzzers/*/repo
 fuzzers/*/*.tar.xz
 fuzzers/*/*.tar.gz
