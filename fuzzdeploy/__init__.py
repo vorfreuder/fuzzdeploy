@@ -6,6 +6,7 @@ from .CasrTriageAnalysis import CasrTriageAnalysis
 from .CoverageAnalysis import CoverageAnalysis
 from .Deployer import Deployer
 from .EdgeAnalysis import EdgeAnalysis
+from .EdgeOverTimeAnalysis import EdgeOverTimeAnalysis
 from .ExcelManager import ExcelManager
 from .JointAnalysis import JointAnalysis
 from .Maker import Maker

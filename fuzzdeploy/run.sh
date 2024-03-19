@@ -2,6 +2,10 @@
 set -e
 
 if [ -n "$DST" ]; then
+    if [ -n "$SCRIPT" ]; then
+        $SRC/scripts/$SCRIPT
+        exit 0
+    fi
     bash $FUZZER/run.sh
     exit 0
 fi

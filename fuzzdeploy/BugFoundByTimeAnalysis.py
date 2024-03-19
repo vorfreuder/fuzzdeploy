@@ -60,7 +60,7 @@ class BugFoundByTimeAnalysis:
             os.path.join(WORK_DIR, TRIAGE_BY_CASR)
         ), "Please make crash triage first"
         bug_info = {}
-        for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(
+        for work_dir, fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(
             WORK_DIR, "ar"
         ):
             bug_info.setdefault(target, [])

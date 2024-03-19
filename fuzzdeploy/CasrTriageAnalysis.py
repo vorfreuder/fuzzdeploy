@@ -156,7 +156,9 @@ class CasrTriageAnalysis:
     def obtain(WORK_DIR):
         total_crash_num = 0
         untriaged_paths = []
-        for fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(WORK_DIR):
+        for work_dir, fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(
+            WORK_DIR
+        ):
             fuzzer_stats_path = utility.search_item(ar_path, "FILE", FUZZER_STATS)
             if fuzzer_stats_path is None:
                 utility.console.print(
@@ -228,9 +230,13 @@ class CasrTriageAnalysis:
             progress.update(triage_task, completed=total_crash_num)
             # time.sleep(2)
         triage_results = {}
-        for fuzzer, target, repeat, triaged_path in utility.get_workdir_paths_by(
-            WORK_DIR, TRIAGE_BY_CASR
-        ):
+        for (
+            work_dir,
+            fuzzer,
+            target,
+            repeat,
+            triaged_path,
+        ) in utility.get_workdir_paths_by(WORK_DIR, TRIAGE_BY_CASR):
             triage = {
                 FUZZER: fuzzer,
                 REPEAT: repeat,

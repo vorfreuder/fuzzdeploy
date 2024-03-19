@@ -18,14 +18,15 @@ class Maker:
         ENV = self.ENV
         MODE = self.MODE
         for (
+            work_dir,
             fuzzer,
             target,
             repeat,
             repeat_path,
         ) in utility.get_workdir_paths_by(WORK_DIR, "ar"):
-            ar_path = os.path.join(WORK_DIR, "ar", fuzzer, target, repeat)
-            dst_path = os.path.join(WORK_DIR, SUB, fuzzer, target, repeat)
-            if IS_SKIP and IS_SKIP(fuzzer, target, repeat, dst_path, WORK_DIR):
+            ar_path = os.path.join(work_dir, "ar", fuzzer, target, repeat)
+            dst_path = os.path.join(work_dir, SUB, fuzzer, target, repeat)
+            if IS_SKIP and IS_SKIP(fuzzer, target, repeat, dst_path, work_dir):
                 continue
             os.makedirs(dst_path, exist_ok=True)
             # wait for a free cpu
@@ -69,7 +70,7 @@ class Maker:
 
     def __init__(
         self,
-        WORK_DIR,
+        WORK_DIR: "str | callable",
         SUB,
         BASE,
         IS_SKIP: "function" = None,
@@ -77,9 +78,6 @@ class Maker:
         ENV={},
         MODE: "PER | ALL" = "PER",
     ):
-        assert os.path.exists(WORK_DIR), f"{WORK_DIR} not exists"
-        # ar_path = os.path.join(WORK_DIR, "ar")
-        # assert os.path.exists(ar_path), f"{ar_path} not exists"
         assert SUB is not None, "SUB should not be None"
         assert BASE is not None, "BASE should not be None"
         available_cpu_count = psutil.cpu_count()
@@ -99,11 +97,13 @@ class Maker:
         # check if images exist
         TARGETS = set()
         for (
+            work_dir,
             fuzzer,
             target,
             repeat,
             repeat_path,
         ) in utility.get_workdir_paths_by(WORK_DIR, "ar"):
+            assert os.path.exists(work_dir), f"{work_dir} not exists"
             TARGETS.add(target)
         Builder.build_imgs(FUZZERS=[BASE], TARGETS=list(TARGETS))
         self.WORK_DIR = WORK_DIR

@@ -14,10 +14,14 @@ def get_cmd_res(command):
 
 
 SHARED = os.environ.get("SHARED")
-AFLSHOWMAP = os.environ.get("AFLSHOWMAP")
+DST = os.environ.get("DST")
+FUZZER = os.environ.get("FUZZER")
+FUZZER = os.path.basename(FUZZER)
+DST = os.path.join(DST, FUZZER)
 OUT = os.environ.get("OUT")
 
-edges_path = os.path.join(AFLSHOWMAP, "edges")
+edges_path = os.path.join(DST, "edges")
+os.makedirs(edges_path, exist_ok=True)
 
 target_args = OUT + "/" + open(os.path.join(SHARED, "target_args")).readline().strip()
 # may not need?
@@ -63,5 +67,5 @@ for edge_file in sorted(os.listdir(edges_path)):
         for line in file:
             unique_edges.add(line.split(":")[0].strip())
     edges_over_seeds[int(edge_file.split(",")[0].lstrip("id:")) + 1] = len(unique_edges)
-with open(os.path.join(AFLSHOWMAP, "edges_over_seeds.log"), "w", encoding="utf-8") as f:
+with open(os.path.join(DST, "edges_over_seeds.log"), "w", encoding="utf-8") as f:
     json.dump(edges_over_seeds, f, ensure_ascii=False, indent=4)

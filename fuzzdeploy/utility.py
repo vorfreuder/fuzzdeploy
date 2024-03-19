@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 import subprocess
@@ -150,33 +151,35 @@ def human_readable_to_timedelta(human_readable_time):
 def get_workdir_paths_by(
     work_dir, suffix="ar", exclude_fuzzers=None, exclude_targets=None
 ):
-    suffix_path = os.path.join(work_dir, suffix)
-    for fuzzer in os.listdir(suffix_path):
-        if exclude_fuzzers and fuzzer in exclude_fuzzers:
-            continue
-        fuzzer_path = os.path.join(suffix_path, fuzzer)
-        if not os.path.isdir(fuzzer_path):
-            continue
-        for target in os.listdir(fuzzer_path):
-            if exclude_targets and target in exclude_targets:
+    if not isinstance(work_dir, str):
+        assert callable(work_dir), "work_dir should be a string or a callable"
+        return work_dir()
+
+    def generator():
+        suffix_path = os.path.join(work_dir, suffix)
+        for fuzzer in os.listdir(suffix_path):
+            if exclude_fuzzers and fuzzer in exclude_fuzzers:
                 continue
-            target_path = os.path.join(fuzzer_path, target)
-            if not os.path.isdir(target_path):
+            fuzzer_path = os.path.join(suffix_path, fuzzer)
+            if not os.path.isdir(fuzzer_path):
                 continue
-            for repeat in os.listdir(target_path):
-                repeat_path = os.path.join(target_path, repeat)
-                if not os.path.isdir(repeat_path):
+            for target in os.listdir(fuzzer_path):
+                if exclude_targets and target in exclude_targets:
                     continue
-                yield fuzzer, target, repeat, repeat_path
+                target_path = os.path.join(fuzzer_path, target)
+                if not os.path.isdir(target_path):
+                    continue
+                for repeat in os.listdir(target_path):
+                    repeat_path = os.path.join(target_path, repeat)
+                    if not os.path.isdir(repeat_path):
+                        continue
+                    yield work_dir, fuzzer, target, repeat, repeat_path
+
+    return generator()
 
 
-def get_mul_workdir_paths_by(
-    work_dirs, suffix="ar", exclude_fuzzers=None, exclude_targets=None
-):
-    if isinstance(work_dirs, str):
-        work_dirs = [work_dirs]
-    for work_dir in work_dirs:
-        for fuzzer, target, repeat, repeat_path in get_workdir_paths_by(
-            work_dir, suffix, exclude_fuzzers, exclude_targets
-        ):
-            yield fuzzer, target, repeat, repeat_path, work_dir
+def hash_filenames(directory):
+    hasher = hashlib.sha256()
+    for filename in os.listdir(directory):
+        hasher.update(filename.encode())
+    return hasher.hexdigest()
