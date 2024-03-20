@@ -55,47 +55,6 @@ def time_count(msg):
     return timer_decorator
 
 
-def parse_path_by(path):
-    path_parts = path.split("/")
-    for i, part in enumerate(path_parts):
-        if part == "ar" or part == "triage_by_casr":
-            index = i
-            break
-    else:
-        assert False, f"Can't find ar or triage_by_casr in {path}!"
-    fuzzer = path_parts[index + 1]
-    target = path_parts[index + 2]
-    repeat = path_parts[index + 3]
-    return fuzzer, target, repeat
-
-
-def summary_paths(work_dir):
-    tbc_path = os.path.join(work_dir, "triage_by_casr")
-    assert os.path.exists(tbc_path), f"{tbc_path} not exists"
-    for fuzzer in os.listdir(tbc_path):
-        fuzzer_path = os.path.join(tbc_path, fuzzer)
-        if not os.path.isdir(fuzzer_path):
-            continue
-        for target in os.listdir(fuzzer_path):
-            target_path = os.path.join(fuzzer_path, target)
-            if not os.path.isdir(target_path):
-                continue
-            for repeat in os.listdir(target_path):
-                repeat_path = os.path.join(target_path, repeat)
-                if not os.path.isdir(repeat_path):
-                    continue
-                summary_path = os.path.join(repeat_path, "summary_by_unique_line")
-                assert os.path.exists(summary_path), f"{summary_path} not exists"
-                yield summary_path
-
-
-def search_file(dir, file_name):
-    for root, dirs, files in os.walk(dir):
-        if file_name in files:
-            return os.path.join(root, file_name)
-    return None
-
-
 def search_folder(dir, folder_name):
     for root, dirs, files in os.walk(dir):
         if folder_name in dirs:

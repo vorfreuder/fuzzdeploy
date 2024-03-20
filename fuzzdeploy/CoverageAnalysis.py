@@ -28,7 +28,6 @@ class CoverageAnalysis:
         for work_dir, fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(
             WORK_DIR
         ):
-            fuzzer, target, repeat = utility.parse_path_by(test_path)
             coverage_log_path = os.path.join(
                 WORK_DIR, "cov", fuzzer, target, repeat, "afl-cov.log"
             )

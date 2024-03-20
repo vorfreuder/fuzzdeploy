@@ -5,8 +5,9 @@ fuzzers/htfuzz
 fuzzers/mopt
 fuzzers/fmix
 fuzzers/udemo
-fuzzers/dynfuzz
 fuzzers/aflgo
+fuzzers/dynfuzz
+fuzzers/dynfuzz_aflshowmap
 fuzzers/deltafuzz
 fuzzers/*/repo
 fuzzers/*/*.tar.xz
