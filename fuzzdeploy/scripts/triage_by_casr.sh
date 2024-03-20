@@ -33,7 +33,7 @@ current_jobs=0
 for file in "$crashes_dir"/*; do
     if [ -f "$file" ]; then          # if file
         filename=$(basename "$file") # get the filename
-        if [ "$filename" != "README.txt" ] && [ ! -e "$reports_dir/$filename".casrep ] && [ ! -e "$failed_dir/$filename" ]; then
+        if [[ "$filename" == "id*" ]] && [ ! -e "$reports_dir/$filename".casrep ] && [ ! -e "$failed_dir/$filename" ]; then
             (
                 if [[ $target_args == *"@@"* ]]; then
                     casr-san -t 10 -o "$reports_dir/$filename".casrep -- ${target_args//@@/$file}

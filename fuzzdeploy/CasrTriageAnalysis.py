@@ -131,8 +131,9 @@ class CasrTriageAnalysis:
             return False
         ar_path = os.path.join(work_dir, "ar", fuzzer, target, repeat)
         crash_path = utility.search_item(ar_path, "FOLDER", "crashes")
-        crash_set = set(os.listdir(crash_path))
-        crash_set.discard("README.txt")
+        crash_set = set(
+            [file for file in os.listdir(crash_path) if file.startswith("id")]
+        )
         if (len(crash_set) == 0) and (
             not os.path.exists(os.path.join(dst_path, "summary_by_unique_line"))
         ):
@@ -152,8 +153,8 @@ class CasrTriageAnalysis:
         return len(crash_set) == 0
 
     @staticmethod
-    @utility.time_count("CRASH TRIAGE BY CASR@https://github.com/ispras/casr DONE!")
-    def obtain(WORK_DIR):
+    # @utility.time_count("CRASH TRIAGE BY CASR@https://github.com/ispras/casr DONE!")
+    def obtain(WORK_DIR: "str | callable"):
         total_crash_num = 0
         untriaged_paths = []
         for work_dir, fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(
@@ -166,12 +167,10 @@ class CasrTriageAnalysis:
                 )
             crash_path = utility.search_item(ar_path, "FOLDER", "crashes")
             assert crash_path is not None, f"crashes not found in {ar_path}"
-            crash_ls = os.listdir(crash_path)
-            tmp_num = len(crash_ls)
-            if "README.txt" in os.listdir(crash_path):
-                tmp_num -= 1
-            total_crash_num += tmp_num
-            untriaged_paths.append((fuzzer, target, repeat))
+            total_crash_num += sum(
+                [1 for file in os.listdir(crash_path) if file.startswith("id")]
+            )
+            untriaged_paths.append((work_dir, fuzzer, target, repeat))
         maker = Maker(
             WORK_DIR,
             TRIAGE_BY_CASR,
@@ -194,16 +193,21 @@ class CasrTriageAnalysis:
             while True:
                 triaged_paths = []
                 triaged_crashes_num = 0
-                for fuzzer, target, repeat in untriaged_paths:
-                    ar_path = os.path.join(WORK_DIR, "ar", fuzzer, target, repeat)
+                for work_dir, fuzzer, target, repeat in untriaged_paths:
+                    ar_path = os.path.join(work_dir, "ar", fuzzer, target, repeat)
                     triaged_path = os.path.join(
-                        WORK_DIR, TRIAGE_BY_CASR, fuzzer, target, repeat
+                        work_dir, TRIAGE_BY_CASR, fuzzer, target, repeat
                     )
                     if not os.path.exists(triaged_path):
                         continue
                     crash_path = utility.search_item(ar_path, "FOLDER", "crashes")
-                    crash_set = set(os.listdir(crash_path))
-                    crash_set.discard("README.txt")
+                    crash_set = set(
+                        [
+                            file
+                            for file in os.listdir(crash_path)
+                            if file.startswith("id")
+                        ]
+                    )
                     triaged_crashes_num += len(crash_set)
                     for folder_name in ["failed", "reports"]:
                         path = os.path.join(triaged_path, folder_name)
@@ -229,6 +233,7 @@ class CasrTriageAnalysis:
                     break
             progress.update(triage_task, completed=total_crash_num)
             # time.sleep(2)
+        # collect the results
         triage_results = {}
         for (
             work_dir,
@@ -277,9 +282,9 @@ class CasrTriageAnalysis:
                 ),
                 reverse=True,
             )
-        utility.console.print(
-            f"The results can be found in {os.path.join(WORK_DIR, TRIAGE_BY_CASR)}"
-        )
+            # utility.console.print(
+            #     f"The results can be found in {os.path.join(work_dir, TRIAGE_BY_CASR)}"
+            # )
         return triage_results
 
     @staticmethod
