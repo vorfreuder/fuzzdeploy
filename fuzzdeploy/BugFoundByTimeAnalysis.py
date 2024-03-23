@@ -271,7 +271,7 @@ class BugFoundByTimeAnalysis:
                 has_seen = set()
                 for item in total:
                     for header_field, data_value in item.items():
-                        if TRIAGE_RULE:
+                        if TRIAGE_RULE and target in TRIAGE_RULE:
                             if TRIAGE_RULE[target][header_field] not in has_seen:
                                 has_seen.add(TRIAGE_RULE[target][header_field])
                                 average += 1
