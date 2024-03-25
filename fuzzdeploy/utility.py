@@ -1,6 +1,7 @@
 import hashlib
 import os
 import re
+import shutil
 import subprocess
 import time
 from datetime import timedelta
@@ -142,3 +143,63 @@ def hash_filenames(directory):
     for filename in os.listdir(directory):
         hasher.update(filename.encode())
     return hasher.hexdigest()
+
+
+def remove_empty_dirs(root_dir, max_depth=5, current_depth=1):
+    if current_depth > max_depth:
+        return
+
+    for entry in os.scandir(root_dir):
+        if entry.is_dir():
+            remove_empty_dirs(entry.path, max_depth, current_depth + 1)
+
+    if not os.listdir(root_dir):
+        os.rmdir(root_dir)
+
+
+def workdir_merge(work_dir, output_dir, include_fuzzers=None, include_targets=None):
+    assert output_dir is not None, "output_dir should not be None"
+    assert os.path.exists(work_dir), f"{work_dir} does not exist"
+    assert work_dir != output_dir, f"work_dir and output_dir should not be the same"
+    fuzzers = set()
+    targets = set()
+    for _, fuzzer, target, _, _ in get_workdir_paths_by(work_dir):
+        fuzzers.add(fuzzer)
+        targets.add(target)
+    if include_fuzzers:
+        fuzzers = set(include_fuzzers)
+    if include_targets:
+        targets = set(include_targets)
+    fuzzers = sorted(list(fuzzers))
+    targets = sorted(list(targets))
+    suffixes = [
+        item
+        for item in os.listdir(work_dir)
+        if os.path.isdir(os.path.join(work_dir, item))
+    ]
+    # print(suffixes, fuzzers, targets)
+    for _, fuzzer, target, repeat, _ in get_workdir_paths_by(work_dir):
+        if fuzzer not in fuzzers or target not in targets:
+            continue
+        ar_dst = os.path.join(output_dir, "ar", fuzzer, target)
+        os.makedirs(ar_dst, exist_ok=True)
+        repeats = [
+            int(item)
+            for item in os.listdir(ar_dst)
+            if os.path.isdir(os.path.join(ar_dst, item))
+        ]
+        repeat_dst = str(max(repeats) + 1) if repeats else "1"
+        for suffix in suffixes:
+            dst = os.path.join(output_dir, suffix, fuzzer, target, repeat_dst)
+            assert not os.path.exists(dst), f"{dst} already exists"
+        for suffix in suffixes:
+            src = os.path.join(work_dir, suffix, fuzzer, target, repeat)
+            if not os.path.exists(src):
+                continue
+            dst = os.path.join(output_dir, suffix, fuzzer, target, repeat_dst)
+            os.makedirs(dst, exist_ok=True)
+            for item in os.listdir(src):
+                source_item = os.path.join(src, item)
+                target_item = os.path.join(dst, item)
+                shutil.move(source_item, target_item)
+    remove_empty_dirs(work_dir)
