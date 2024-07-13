@@ -11,7 +11,7 @@ from .ExcelManager import ExcelManager
 from .JointAnalysis import JointAnalysis
 from .Maker import Maker
 from .StateAnalysis import StateAnalysis
-from .utility import console, workdir_merge
+from .utility import console, get_workdir_paths_by, workdir_merge
 
 console.print(
     "[bold]fuzzdeploy developed by [yellow]vorfreuder[/yellow]@https://github.com/vorfreuder[/bold]"

@@ -1,14 +1,9 @@
 import os
-import re
-import shutil
-import time
-
-from openpyxl.styles import Font, PatternFill
 
 from . import utility
 from .Builder import Builder
+from .constants import *
 from .CpuAllocator import CpuAllocator
-from .ExcelManager import ExcelManager
 from .Maker import Maker
 
 
@@ -17,17 +12,45 @@ class CoverageAnalysis:
     @utility.time_count(
         "Coverage BY AFL-COV@https://github.com/vanhauser-thc/afl-cov DONE!"
     )
-    def coverage_by_aflcov(WORK_DIR):
+    def obtain(
+        WORK_DIR: "str | callable",
+    ):
+        for work_dir, fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(
+            WORK_DIR
+        ):
+            assert os.path.exists(
+                os.path.join(ar_path, "target_args")
+            ), f"target_args not found in {ar_path}"
+            queue_path = utility.search_item(ar_path, "FOLDER", "queue")
+            assert queue_path, f"IMPOSSIBLE! queue folder not found in {ar_path}"
+
+        # compute data
+        def is_handled(fuzzer, target, repeat, dst_path, work_dir):
+            ar_path = os.path.join(work_dir, "ar", fuzzer, target, repeat)
+            hash_file = os.path.join(work_dir, "cov", fuzzer, target, repeat, ".hash")
+            if not os.path.exists(hash_file):
+                return False
+            with open(hash_file, "r") as f:
+                dst_hash = f.read()
+            queue_path = utility.search_item(ar_path, "FOLDER", "queue")
+            queue_hash = utility.hash_filenames(queue_path)
+            if dst_hash == queue_hash:
+                return True
+            os.remove(hash_file)
+            return False
+
         maker = Maker(
             WORK_DIR,
             "cov",
             "aflcov",
+            IS_SKIP=is_handled,
         )
         maker.thread.join()
-        res = []
-        for work_dir, fuzzer, target, repeat, test_path in utility.get_workdir_paths_by(
+        summary_info = {}
+        for work_dir, fuzzer, target, repeat, ar_path in utility.get_workdir_paths_by(
             WORK_DIR
         ):
+            summary_info.setdefault(target, [])
             coverage_log_path = os.path.join(
                 WORK_DIR, "cov", fuzzer, target, repeat, "afl-cov.log"
             )
@@ -37,12 +60,24 @@ class CoverageAnalysis:
                 if line.lstrip().startswith("lines"):
                     info = line.split(":", 1)[1].split("%", 1)[0].strip()
                     # print(f"{fuzzer} {target} {repeat} {info}")
-                    res.append(
+                    summary_info[target].append(
                         {
                             "fuzzer": fuzzer,
-                            "target": target,
                             "linecov": info,
                         }
                     )
                     break
-        return res
+            hash_file = os.path.join(
+                work_dir,
+                "cov",
+                fuzzer,
+                target,
+                repeat,
+                ".hash",
+            )
+            if not os.path.exists(hash_file):
+                queue_path = utility.search_item(ar_path, "FOLDER", "queue")
+                hash_value = utility.hash_filenames(queue_path)
+                with open(hash_file, "w") as f:
+                    f.write(hash_value)
+        return summary_info

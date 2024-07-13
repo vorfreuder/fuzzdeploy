@@ -1,7 +1,6 @@
 import csv
 import json
 import os
-import shutil
 
 from . import utility
 from .Builder import Builder

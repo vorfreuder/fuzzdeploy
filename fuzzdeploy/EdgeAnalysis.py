@@ -81,8 +81,9 @@ class EdgeAnalysis:
                 BASE_FUZZER,
                 ".hash",
             )
-            queue_path = utility.search_item(ar_path, "FOLDER", "queue")
-            hash_value = utility.hash_filenames(queue_path)
-            with open(hash_file, "w") as f:
-                f.write(hash_value)
+            if not os.path.exists(hash_file):
+                queue_path = utility.search_item(ar_path, "FOLDER", "queue")
+                hash_value = utility.hash_filenames(queue_path)
+                with open(hash_file, "w") as f:
+                    f.write(hash_value)
         return summary_info

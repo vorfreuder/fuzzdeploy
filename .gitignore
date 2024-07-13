@@ -8,6 +8,7 @@ fuzzers/udemo
 fuzzers/aflgo
 fuzzers/dynfuzz
 fuzzers/dynfuzz_aflshowmap
+fuzzers/dynfuzz09
 fuzzers/deltafuzz
 fuzzers/*/repo
 fuzzers/*/*.tar.xz

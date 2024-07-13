@@ -117,19 +117,19 @@ def get_workdir_paths_by(
 
     def generator():
         suffix_path = os.path.join(work_dir, suffix)
-        for fuzzer in os.listdir(suffix_path):
+        for fuzzer in sorted(os.listdir(suffix_path)):
             if exclude_fuzzers and fuzzer in exclude_fuzzers:
                 continue
             fuzzer_path = os.path.join(suffix_path, fuzzer)
             if not os.path.isdir(fuzzer_path):
                 continue
-            for target in os.listdir(fuzzer_path):
+            for target in sorted(os.listdir(fuzzer_path)):
                 if exclude_targets and target in exclude_targets:
                     continue
                 target_path = os.path.join(fuzzer_path, target)
                 if not os.path.isdir(target_path):
                     continue
-                for repeat in os.listdir(target_path):
+                for repeat in sorted(os.listdir(target_path)):
                     repeat_path = os.path.join(target_path, repeat)
                     if not os.path.isdir(repeat_path):
                         continue
