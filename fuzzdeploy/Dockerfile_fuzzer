@@ -1,0 +1,57 @@
+FROM ubuntu:18.04
+
+RUN cp /etc/apt/sources.list /etc/apt/sources.list.bak && \
+	# comment the following six lines if you don't need to use tsinghua mirror
+	echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse" > /etc/apt/sources.list && \
+	echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+	echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse" >> /etc/apt/sources.list && \
+	echo "deb http://security.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list && \
+	ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+	echo "Asia/Shanghai" > /etc/timezone && \
+	apt-get clean && \
+	apt-get update && \
+	apt-get install -y sudo tmux htop git wget curl make gdb lsb-release build-essential zip
+
+ENV SRC /src
+ENV FUZZER ${SRC}/fuzzer
+ENV TARGET ${SRC}/target
+ENV PROGRAM /program
+ENV SHARED /shared
+
+ENV CC  /usr/bin/gcc
+ENV CXX /usr/bin/g++
+ENV CFLAGS "-O0"
+ENV CXXFLAGS "-O0"
+ENV LD /usr/bin/ld
+ENV AR /usr/bin/ar
+ENV AS /usr/bin/as
+ENV NM /usr/bin/nm
+ENV RANLIB /usr/bin/ranlib
+
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+RUN mkdir -p /home && \
+	groupadd -g ${GROUP_ID} fuzzdeploy && \
+	useradd -l -u ${USER_ID} -K UMASK=0000 -d /home -g fuzzdeploy fuzzdeploy && \
+	chown fuzzdeploy:fuzzdeploy /home
+RUN	echo "fuzzdeploy:root" | chpasswd && usermod -a -G sudo fuzzdeploy && echo "fuzzdeploy ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+RUN mkdir -p ${SRC} ${FUZZER} ${TARGET} ${PROGRAM} ${SHARED} && \
+	chown fuzzdeploy:fuzzdeploy ${SRC} ${FUZZER} ${TARGET} ${PROGRAM} ${SHARED} && \
+	chmod 744 ${SRC} ${FUZZER} ${TARGET} ${PROGRAM} ${SHARED}
+
+COPY --chown=fuzzdeploy:fuzzdeploy . ${SRC}/
+
+ARG fuzzer_name
+ENV FUZZER_NAME ${fuzzer_name}
+USER root:root
+RUN chmod +x ${FUZZER}/*.sh
+RUN ${FUZZER}/preinstall.sh
+RUN chown fuzzdeploy:fuzzdeploy ${FUZZER}
+USER fuzzdeploy:fuzzdeploy
+RUN ${FUZZER}/fetch.sh
+RUN ${FUZZER}/build.sh
+
+RUN echo 'alias ls="ls --color=auto"' >> ~/.bashrc
+
+ENTRYPOINT ["/bin/bash"]

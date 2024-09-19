@@ -1,0 +1,1 @@
+jasper -f @@ -t mif -F /dev/null -T jpg

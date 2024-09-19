@@ -1,0 +1,17 @@
+ARG fuzzer_name
+FROM $fuzzer_name:fuzzdeploy
+
+COPY --chown=fuzzdeploy:fuzzdeploy . ${SRC}/
+
+ARG target_name
+ENV TARGET_NAME ${target_name}
+USER root:root
+RUN chmod +x ${TARGET}/*.sh
+RUN ${TARGET}/preinstall.sh
+RUN chown fuzzdeploy:fuzzdeploy ${TARGET}
+USER fuzzdeploy:fuzzdeploy
+RUN ${TARGET}/fetch.sh
+
+RUN ${FUZZER}/instrument.sh
+
+ENTRYPOINT ["/bin/bash"]
