@@ -29,13 +29,16 @@ def sigint_handler(signal, frame):
 
 
 def get_free_cpu(cpu_range: set[str]) -> str | None:
-    used_cpu = set()
-    for container in get_containers():
-        used_cpu.add(container.attrs["HostConfig"]["CpusetCpus"])
-    for cpu in cpu_range:
-        if cpu not in used_cpu:
-            return cpu
-    return None
+    try:
+        used_cpu = set()
+        for container in get_containers():
+            used_cpu.add(container.attrs["HostConfig"]["CpusetCpus"])
+        for cpu in cpu_range:
+            if cpu not in used_cpu:
+                return cpu
+        return None
+    except NotFound:
+        return None
 
 
 def get_index(path: str | Path) -> int:

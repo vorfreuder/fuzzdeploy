@@ -24,6 +24,7 @@ class BuildStatus(Enum):
 
 
 TOP_DIR = Path(__file__).resolve().parent.parent
+NOW = datetime.now().strftime("%Y%m%d%H%M")
 build_image_result = namedtuple(
     "build_image_result", ["fuzzer", "target", "code", "status", "log_path"]
 )
@@ -42,17 +43,19 @@ def write_log(logs, log_path: str | Path):
     log_path = Path(log_path)
     with open(log_path, "w") as f:
         for log in logs:
-            if log.get("stream"):
-                f.write(log["stream"])
-            elif log.get("error"):
-                f.write(log["error"])
-                is_error = True
+            try:
+                if log.get("stream"):
+                    f.write(log["stream"])
+                elif log.get("error"):
+                    f.write(log["error"])
+                    is_error = True
+            except FileNotFoundError:
+                pass
     status = "success" if not is_error else "error"
-    log_path = log_path.rename(
-        log_path.with_name(
-            f"{datetime.now().strftime('%Y%m%d%H%M')}-{status}-{log_path.name}"
+    if log_path.exists():
+        log_path = log_path.rename(
+            log_path.with_name(f"{NOW}-{status}-{log_path.name}")
         )
-    )
     return log_path, is_error
 
 
