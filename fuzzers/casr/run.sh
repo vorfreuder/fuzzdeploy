@@ -9,25 +9,13 @@ summary_path=$target_dir/summary_by_unique_line
 failed_dir=$target_dir/failed
 reports_unique_line=$target_dir/reports_unique_line
 
-cd $SHARED
-if [ ! -f "target_args" ]; then
-    echo "Error: target_args not found"
-    exit 1
-fi
-target_args="$OUT/$(cat target_args)"
-crashes_dir=$(find "$(pwd)" -type d -name "crashes" -print)
+target_args="$PROGRAM/$(cat $TARGET/target_args)"
+crashes_dir=$(find "$SHARED" -type d -name "crashes" -print)
 if [ -z "$crashes_dir" ]; then
     echo "Error: crashes_dir not found"
     exit 1
 fi
 mkdir -p $reports_dir $failed_dir $reports_unique_line
-# reports_count=$(find "$failed_dir" -type f | wc -l)
-# failed_count=$(find "$failed_dir" -type f | wc -l)
-# crashes_count=$(find "$reports_dir" -type f -not -name 'README.txt' | wc -l)
-# if [ "$crashes_count" -ne 0 ] && [ "$((reports_count + failed_count))" -eq "$crashes_count"]; then
-#     echo "All crashes have been triaged"
-#     exit 0
-# fi
 
 current_jobs=0
 for file in "$crashes_dir"/*; do

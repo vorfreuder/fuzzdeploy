@@ -2,10 +2,10 @@ import multiprocessing
 import os
 import shutil
 import tempfile
-from collections import namedtuple
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import NamedTuple
 
 import docker
 
@@ -25,9 +25,15 @@ class BuildStatus(Enum):
 
 TOP_DIR = Path(__file__).resolve().parent.parent
 NOW = datetime.now().strftime("%Y%m%d%H%M")
-build_image_result = namedtuple(
-    "build_image_result", ["fuzzer", "target", "code", "status", "log_path"]
-)
+
+
+class BuildImageResult(NamedTuple):
+    image_name: str
+    fuzzer: str
+    target: str | None
+    code: int
+    status: BuildStatus
+    log_path: str | None
 
 
 def remove_image(image_name: str):
@@ -61,11 +67,12 @@ def write_log(logs, log_path: str | Path):
 
 def build_fuzzer(
     fuzzer: str, log_path: str | Path, *, skip_existed_images: bool = True
-) -> build_image_result:
+) -> BuildImageResult:
     fuzzer_image = get_fuzzer_image_name(fuzzer)
     if is_image_exist(fuzzer_image):
         if skip_existed_images:
-            return build_image_result(
+            return BuildImageResult(
+                image_name=fuzzer_image,
                 fuzzer=fuzzer,
                 target=None,
                 code=0,
@@ -96,17 +103,18 @@ def build_fuzzer(
         fuzzer_log_path = log_path / f"{fuzzer}.log"
         fuzzer_log_path, is_error = write_log(logs, fuzzer_log_path)
         tmp_com_args = {
+            "image_name": fuzzer_image,
             "fuzzer": fuzzer,
             "target": None,
             "log_path": fuzzer_log_path.as_posix(),
         }
         if is_error:
-            return build_image_result(
+            return BuildImageResult(
                 **tmp_com_args,
                 code=1,
                 status=BuildStatus.FUZZER_BUILD_FAILURE,
             )
-    return build_image_result(
+    return BuildImageResult(
         **tmp_com_args,
         code=0,
         status=BuildStatus.FUZZER_BUILD_SUCCESS,
@@ -115,28 +123,30 @@ def build_fuzzer(
 
 def build_target(
     fuzzer: str, target: str, log_path: str | Path, *, skip_existed_images: bool = True
-) -> build_image_result:
+) -> BuildImageResult:
     image = get_target_image_name(fuzzer, target)
+    tmp_com_args = {
+        "image_name": image,
+        "fuzzer": fuzzer,
+        "target": target,
+        "log_path": None,
+    }
     if is_image_exist(image):
         if skip_existed_images:
-            return build_image_result(
-                fuzzer=fuzzer,
-                target=target,
+            return BuildImageResult(
+                **tmp_com_args,
                 code=0,
                 status=BuildStatus.TARGET_IMAGE_EXISTENCE,
-                log_path=None,
             )
         else:
             remove_image(image)
     log_path = Path(log_path).absolute()
     log_path.mkdir(parents=True, exist_ok=True)
     if not is_image_exist(get_fuzzer_image_name(fuzzer)):
-        return build_image_result(
-            fuzzer=fuzzer,
-            target=target,
+        return BuildImageResult(
+            **tmp_com_args,
             code=1,
             status=BuildStatus.FUZZER_IMAGE_NOT_EXISTENCE,
-            log_path=None,
         )
     with tempfile.TemporaryDirectory(prefix=f"{fuzzer}-{target}-") as ctx_dir:
         ctx_dir = Path(ctx_dir)
@@ -154,18 +164,14 @@ def build_target(
         )
         target_log_path = log_path / f"{fuzzer}_{target}.log"
         target_log_path, is_error = write_log(logs, target_log_path)
-        tmp_com_args = {
-            "fuzzer": fuzzer,
-            "target": target,
-            "log_path": target_log_path.as_posix(),
-        }
+        tmp_com_args["log_path"] = target_log_path.as_posix()
         if is_error:
-            return build_image_result(
+            return BuildImageResult(
                 **tmp_com_args,
                 code=1,
                 status=BuildStatus.TARGET_BUILD_FAILURE,
             )
-    return build_image_result(
+    return BuildImageResult(
         **tmp_com_args,
         code=0,
         status=BuildStatus.TARGET_BUILD_SUCCESS,
@@ -191,7 +197,7 @@ def wrapper_build_target(args):
 
 def build_image(
     fuzzer: str, target: str, log_path: str | Path, skip_existed_images: bool = True
-) -> build_image_result:
+) -> BuildImageResult:
     res = build_fuzzer(
         fuzzer=fuzzer,
         log_path=log_path,
@@ -214,7 +220,7 @@ def build_images(
     *,
     skip_existed_fuzzer_images: bool = True,
     skip_existed_target_images: bool = True,
-) -> list[build_image_result]:
+) -> list[BuildImageResult]:
     assert isinstance(fuzzers, list), "fuzzers should be a list"
     assert len(fuzzers) > 0, "fuzzers should contain one element at least"
     assert isinstance(targets, list), "targets should be a list"
