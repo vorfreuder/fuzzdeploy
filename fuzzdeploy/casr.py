@@ -163,4 +163,4 @@ def to_excel(work_dir: str | Path):
                 columns_to_hide=["target"],
                 columns_and_rows_to_freeze="A2",
             )
-    print(f"save fuzzer status to {excel_path}")
+    print(f"save casr to {excel_path}")
