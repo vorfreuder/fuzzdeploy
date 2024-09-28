@@ -49,11 +49,17 @@ update-alternatives \
 
 export PATH=$PATH:${SRC}/cargo/bin
 export CARGO_HOME=${SRC}/cargo
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
-    RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup \
+# curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+#     RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup \
+#         sh -s -- -y
+curl --proto '=https' --tlsv1.2 -sSf https://rsproxy.cn/rustup-init.sh |
+    RUSTUP_DIST_SERVER=https://rsproxy.cn RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup \
         sh -s -- -y
 mkdir -vp ${CARGO_HOME:-$HOME/.cargo}
+# echo -e \
+#     "[source.crates-io]\nreplace-with = 'ustc'\n\n[source.ustc]\nregistry = 'git://mirrors.ustc.edu.cn/crates.io-index'" \
+#     >>${CARGO_HOME:-$HOME/.cargo}/config
 echo -e \
-    "[source.crates-io]\nreplace-with = 'ustc'\n\n[source.ustc]\nregistry = 'git://mirrors.ustc.edu.cn/crates.io-index'" \
+    "[source.crates-io]\nreplace-with = 'rsproxy-sparse'\n[source.rsproxy]\nregistry = 'https://rsproxy.cn/crates.io-index'\n[source.rsproxy-sparse]\nregistry = 'sparse+https://rsproxy.cn/index/'\n[registries.rsproxy]\nindex = 'https://rsproxy.cn/crates.io-index'\n[net]\ngit-fetch-with-cli = true" \
     >>${CARGO_HOME:-$HOME/.cargo}/config
 cargo install casr
