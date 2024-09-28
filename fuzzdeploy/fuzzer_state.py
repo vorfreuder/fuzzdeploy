@@ -33,13 +33,17 @@ def get(work_dir: str | Path):
         return converted
 
     df = df.apply(try_convert_to_numeric)
-    df["idx"] = df["idx"].astype(str)
+    if not df.empty:
+        df["idx"] = df["idx"].astype(str)
     return df
 
 
 def to_excel(work_dir: str | Path):
     work_dir = Path(work_dir).absolute()
     df = get(work_dir)
+    if df.empty:
+        print("no fuzzer status data")
+        return
     df["crashes"] = np.where(
         df["unique_crashes"].notna(), df["unique_crashes"], df["saved_crashes"]
     )
