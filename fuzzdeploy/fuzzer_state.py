@@ -44,9 +44,17 @@ def to_excel(work_dir: str | Path):
     if df.empty:
         print("no fuzzer status data")
         return
+    if "unique_crashes" not in df.columns:
+        df["unique_crashes"] = np.nan
+    if "saved_crashes" not in df.columns:
+        df["saved_crashes"] = np.nan
     df["crashes"] = np.where(
         df["unique_crashes"].notna(), df["unique_crashes"], df["saved_crashes"]
     )
+    if "unique_hangs" not in df.columns:
+        df["unique_hangs"] = np.nan
+    if "saved_hangs" not in df.columns:
+        df["saved_hangs"] = np.nan
     df["unique_hangs"] = np.where(
         df["unique_hangs"].notna(), df["unique_hangs"], df["saved_hangs"]
     )
