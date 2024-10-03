@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import re
 from pathlib import Path
 from typing import NamedTuple
@@ -212,3 +213,13 @@ def is_heap_related_vulnerability(vul_type):
         "fuzz target exited",
         "timeout",
     )
+
+
+def hash_path(path: str | Path) -> str:
+    path = Path(path).absolute()
+    hasher = hashlib.sha256()
+    for filename in path.iterdir():
+        if filename.is_dir():
+            continue
+        hasher.update(filename.name.encode())
+    return hasher.hexdigest()
