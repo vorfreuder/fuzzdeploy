@@ -1,6 +1,6 @@
 import datetime
+import multiprocessing
 import re
-import threading
 import time
 from pathlib import Path
 
@@ -85,14 +85,16 @@ def _print_progress(work_dir: str | Path):
 
 def get(work_dir: str | Path):
     work_dir = Path(work_dir).absolute()
-    thread = threading.Thread(target=_print_progress, args=(work_dir,), daemon=True)
-    thread.start()
+    p = multiprocessing.Process(target=_print_progress, args=(work_dir,), daemon=True)
+    p.start()
     make(
         work_dir=work_dir,
         sub_dir="casr",
         base_image="casr",
         skip_handler=_skip_handler,
     )
+    p.terminate()
+    print()
     casr_res_ls = []
     for item in work_dir_iterdir(work_dir, "casr"):
         dst_path = item.work_dir / "casr" / item.fuzzer / item.target / item.idx
