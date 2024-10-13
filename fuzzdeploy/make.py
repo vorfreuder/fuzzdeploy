@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Callable
 
 import docker
+from docker.errors import APIError
 from docker.models.containers import Container
 
 from .build import build_images
@@ -121,6 +122,12 @@ def make(
             }
         min_cpu_container = min(cpu_bindings.values(), key=lambda x: x["cpu_count"])
         min_cpu_container["cpus"].append(cpu_id)
-        min_cpu_container["container"].update(
-            cpuset_cpus=",".join(min_cpu_container["cpus"])
-        )
+        try:
+            min_cpu_container["container"].update(
+                cpuset_cpus=",".join(min_cpu_container["cpus"])
+            )
+        # in case of container not running
+        except APIError:
+            pass
+        except:
+            raise
