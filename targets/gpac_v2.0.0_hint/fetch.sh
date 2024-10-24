@@ -1,6 +1,6 @@
 #!/bin/bash
 # Date: 2022/02/22
-# Version: v1.0.1
+# Version: v2.0.0
 
 set -e
 

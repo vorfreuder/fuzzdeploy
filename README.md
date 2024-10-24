@@ -35,10 +35,11 @@ Inspired by [MAGMA](https://hexhive.epfl.ch/magma/), fuzzdeploy is a collection 
 #!/bin/bash
 set -e
 apt-get update
-apt-get install -y sudo tmux htop git curl python3 python3-pip python3-venv
+apt-get install -y sudo tmux htop git curl python3 python3-pip python3-venv rsync
 curl -sS https://webinstall.dev/shfmt | bash
 # install python3 packages
-pip3 install openpyxl black isort numpy pandas styleframe
+# export PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
+pip3 install openpyxl black isort numpy pandas styleframe docker
 # install docker if you need
 sudo apt-get update \
     && sudo apt-get install -y ca-certificates curl gnupg \
@@ -51,6 +52,9 @@ sudo apt-get update \
     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null \
     && sudo apt-get update \
     && sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+# sudo usermod -aG docker $USER
+echo core | sudo tee /proc/sys/kernel/core_pattern
+sudo bash -c 'cd /sys/devices/system/cpu; echo performance | tee cpu*/cpufreq/scaling_governor'
 ```
 Python 3.10.12 and Ubuntu 22.04.5 LTS work fine.
 
