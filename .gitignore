@@ -5,8 +5,6 @@ fuzzers/aflplusplus4_08c
 fuzzers/ctxhtfuzz*
 fuzzers/htfuzz
 fuzzers/mopt
-fuzzers/fmix
-fuzzers/udemo
 fuzzers/aflgo
 fuzzers/dynfuzz
 fuzzers/dynfuzz_aflshowmap
@@ -20,6 +18,8 @@ targets/*/repo
 targets/*/*.tar.xz
 targets/*/*.tar.gz
 targets/*/*.zip
+targets/libtiff_v3.9.7
+targets/swftools_0.9.2
 tests
 workdir*
 pyrightconfig.json
